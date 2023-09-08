@@ -25,23 +25,23 @@ if data_input:
         data_input), header=None, usecols=[0])[0]
 
 # if st.button("Plot"):
-    with st.spinner("Creating Dendrogram..."):
-        labels = [i for i in populations]
-        height = max(20 * len(populations), 500)
-        fig = ff.create_dendrogram(
-            data,
-            orientation="right",
-            labels=labels,
-            linkagefun=lambda x: linkage(x, method="ward"),
-            # color_threshold=0.07,
-        )
-        fig.update_layout(
-            height=height,
-            yaxis={'side': 'right'}
-        )
-        fig.update_yaxes(
-            automargin=True,
-            range=[0, len(populations)*10]
-        )
+with st.spinner("Creating Dendrogram..."):
+    labels = [i for i in populations]
+    height = max(20 * len(populations), 500)
+    fig = ff.create_dendrogram(
+        data,
+        orientation="right",
+        labels=labels,
+        linkagefun=lambda x: linkage(x, method="ward"),
+        # color_threshold=0.07,
+    )
+    fig.update_layout(
+        height=height,
+        yaxis={'side': 'right'}
+    )
+    fig.update_yaxes(
+        automargin=True,
+        range=[0, len(populations)*10]
+    )
 
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+    st.plotly_chart(fig, theme=None, use_container_width=True)
