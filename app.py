@@ -6,7 +6,7 @@ import plotly.figure_factory as ff
 
 # Setting the layout of the page to wide and the title of the page to G25 Dendrograms
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
-st.title("PopPlot")
+st.header(':blue[Pop]Plot')
 
 tab1, tab2 = st.tabs(["Data", "Plot"])
 
