@@ -1,6 +1,6 @@
 # Required packages for my project
 
-streamlit==1.6.0
+streamlit==1.26.0
 pandas==1.5.3
 scipy==1.10.0
 scikit-learn==1.2.1
