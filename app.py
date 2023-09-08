@@ -8,22 +8,27 @@ import plotly.figure_factory as ff
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
 st.title("PopPlot")
 
-# Creating a file uploader to upload data as CSV or text
-uploaded_file = st.file_uploader(
-    "Upload a CSV or text file", type=["csv", "txt"])
+tab1, tab2 = st.tabs(["Data", "Plot"])
 
-# Reading the data from the file pops.csv and displaying it in the text area.
-default_data = open("EUROPE.txt", "r").read()
-if uploaded_file is not None:
-    default_data = uploaded_file.getvalue().decode('utf-8')
-data_input = st.text_area("Enter data in CSV format", value=default_data)
 
-# Reading the data from the file pops.csv and displaying it in the text area.
-if data_input:
-    data = pd.read_csv(io.StringIO(data_input), header=None).iloc[:, 1:]
-    populations = pd.read_csv(io.StringIO(
-        data_input), header=None, usecols=[0])[0]
+with tab1:
+    # Creating a file uploader to upload data as CSV or text
+    uploaded_file = st.file_uploader(
+        "Upload a CSV or text file", type=["csv", "txt"])
 
+    # Reading the data from the file pops.csv and displaying it in the text area.
+    default_data = open("EUROPE.txt", "r").read()
+    if uploaded_file is not None:
+        default_data = uploaded_file.getvalue().decode('utf-8')
+    data_input = st.text_area("Enter data in CSV format", value=default_data)
+
+    # Reading the data from the file pops.csv and displaying it in the text area.
+    if data_input:
+        data = pd.read_csv(io.StringIO(data_input), header=None).iloc[:, 1:]
+        populations = pd.read_csv(io.StringIO(
+            data_input), header=None, usecols=[0])[0]
+
+with tab2:
     if st.button("Plot"):
         with st.spinner("Creating Dendrogram..."):
             labels = [i for i in populations]
