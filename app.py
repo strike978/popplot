@@ -47,35 +47,36 @@ if data_input != st.session_state.textbox_content.strip():
 plot_button = st.button("Plot")  # Add a Plot button
 
 if plot_button:
-    if data_input:
-        # Remove leading/trailing whitespace and empty lines
-        cleaned_data_input = "\n".join(
-            line.strip() for line in data_input.splitlines() if line.strip())
+    with st.spinner("Creating Dendrogram..."):
+        if data_input:
+            # Remove leading/trailing whitespace and empty lines
+            cleaned_data_input = "\n".join(
+                line.strip() for line in data_input.splitlines() if line.strip())
 
-        data = pd.read_csv(io.StringIO(
-            cleaned_data_input), header=None).iloc[:, 1:]
-        populations = pd.read_csv(io.StringIO(
-            cleaned_data_input), header=None, usecols=[0])[0]
+            data = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None).iloc[:, 1:]
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
 
-        if not data.empty and len(populations) >= 2:
-            labels = [i for i in populations]
-            height = max(20 * len(populations), 500)
-            fig = ff.create_dendrogram(
-                data,
-                orientation="right",
-                labels=labels,
-                linkagefun=lambda x: linkage(x, method="ward"),
-            )
-            fig.update_layout(
-                height=height,
-                yaxis={'side': 'right'}
-            )
-            fig.update_yaxes(
-                automargin=True,
-                range=[0, len(populations)*10]
-            )
+            if not data.empty and len(populations) >= 2:
+                labels = [i for i in populations]
+                height = max(20 * len(populations), 500)
+                fig = ff.create_dendrogram(
+                    data,
+                    orientation="right",
+                    labels=labels,
+                    linkagefun=lambda x: linkage(x, method="ward"),
+                )
+                fig.update_layout(
+                    height=height,
+                    yaxis={'side': 'right'}
+                )
+                fig.update_yaxes(
+                    automargin=True,
+                    range=[0, len(populations)*10]
+                )
 
-            st.plotly_chart(fig, theme=None, use_container_width=True)
-        else:
-            st.warning(
-                "Please add at least 2 populations before plotting.")
+                st.plotly_chart(fig, theme=None, use_container_width=True)
+            else:
+                st.warning(
+                    "Please add at least 2 populations before plotting.")
