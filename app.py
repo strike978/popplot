@@ -16,24 +16,47 @@ if 'deleted_content' not in st.session_state:
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
 st.header('Pop:green[Plot]')
 
-# tab1, tab2 = st.tabs(["Data", "Plot"])
+st.caption(
+    'This site is optimized for desktop computers. You may experience some difficulty viewing it on a mobile device.')
 
-# with tab1:
-# Read data from Modern Ancestry.txt
-with open("Modern Ancestry.txt") as f:
-    ancestry_list = [line.strip() for line in f]
+# Define the available data files
+data_files = {
+    "Modern Era": "Modern Ancestry.txt",
+    "Mesolithic and Neolithic": "Mesolithic and Neolithic.txt",
+    "Bronze Age": "Bronze Age.txt",
+    "Iron Age": "Iron Age.txt",
+    "Migration Period": "Migration Period.txt",
+    "Middle Ages": "Middle Ages.txt",
+}
+
+# Define a function to read data from a file with UTF-8 encoding
+
+
+def read_data_file(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return [line.strip() for line in f]
+
+
+# Create a multiselect checkbox to choose data files
+selected_files = st.multiselect("Time Period:", list(
+    data_files.keys()), default=["Modern Era"])
+
+# Read data from selected files
+selected_data = []
+for file in selected_files:
+    selected_data.extend(read_data_file(data_files[file]))
 
 # Create a Selectbox to display content before the first comma
 selected_option_index = st.selectbox(
-    "Select a population",
-    range(len(ancestry_list)),
-    format_func=lambda i: ancestry_list[i].split(',')[0]
+    "Populations:",
+    range(len(selected_data)),
+    format_func=lambda i: selected_data[i].split(',')[0]
 )
 
 # Create a button to add the entire selected option to the Textbox
 if st.button("Add Population"):
     if selected_option_index is not None:
-        selected_option = ancestry_list[selected_option_index]
+        selected_option = selected_data[selected_option_index]
         if selected_option not in st.session_state.textbox_content:
             st.session_state.textbox_content += "\n" + selected_option
 
@@ -46,7 +69,6 @@ if data_input != st.session_state.textbox_content.strip():
     st.session_state.deleted_content = ""
     st.session_state.textbox_content = data_input.strip()
 
-
 # This code is creating two columns in the Streamlit app interface. The first column (`col1`) has a
 # width of 1 and the second column (`col2`) has a width of 10.
 col1, col2 = st.columns([1, 10])
@@ -55,7 +77,6 @@ with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
 with col2:
     plot_pca = st.button('Plot PCA')
-
 
 if plot_dendrogram:
     with st.spinner("Creating Dendrogram..."):
