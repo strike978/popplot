@@ -71,9 +71,10 @@ if data_input != st.session_state.textbox_content.strip():
     # Fixes issue with text reverting if changed twice?
     st.experimental_rerun()
 
-# This code is creating two columns in the Streamlit app interface. The first column (`col1`) has a
-# width of 1 and the second column (`col2`) has a width of 10.
-col1, col2, col3 = st.columns(3)
+
+# The line `col1, col2, col3 = st.columns([1.2, 0.9, 11])` is creating three columns in the Streamlit
+# app interface.
+col1, col2, col3 = st.columns([1.2, 0.9, 11])
 
 with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
