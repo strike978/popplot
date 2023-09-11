@@ -68,6 +68,8 @@ data_input = st.text_area('Enter data in G25 coordinates format:',
 if data_input != st.session_state.textbox_content.strip():
     st.session_state.deleted_content = ""
     st.session_state.textbox_content = data_input.strip()
+    # Fixes issue with text reverting if changed twice?
+    st.experimental_rerun()
 
 # This code is creating two columns in the Streamlit app interface. The first column (`col1`) has a
 # width of 1 and the second column (`col2`) has a width of 10.
