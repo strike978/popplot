@@ -73,12 +73,15 @@ if data_input != st.session_state.textbox_content.strip():
 
 # This code is creating two columns in the Streamlit app interface. The first column (`col1`) has a
 # width of 1 and the second column (`col2`) has a width of 10.
-col1, col2 = st.columns([1, 10])
+col1, col2, col3 = st.columns(3)
 
 with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
 with col2:
-    plot_pca = st.button('Plot PCA')
+    plot_2d_pca = st.button('Plot 2D PCA')
+with col3:
+    plot_3d_pca = st.button('Plot 3D PCA')
+
 
 if plot_dendrogram:
     with st.spinner("Creating Dendrogram..."):
@@ -115,8 +118,8 @@ if plot_dendrogram:
                 st.warning(
                     "Please add at least 2 populations before plotting.")
 
-if plot_pca:
-    with st.spinner("Creating PCA Plot..."):
+if plot_2d_pca:
+    with st.spinner("Creating 2D PCA Plot..."):
         if data_input:
             # Remove leading/trailing whitespace and empty lines
             cleaned_data_input = "\n".join(
@@ -138,6 +141,41 @@ if plot_pca:
 
                 # Change the legend title to "Populations"
                 fig.update_layout(legend_title_text='Populations')
+                # Remove the axis labels
+                fig.update_xaxes(title_text='')
+                fig.update_yaxes(title_text='')
+
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(
+                    "Please add at least 2 populations before plotting.")
+
+if plot_3d_pca:
+    with st.spinner("Creating 3D PCA Plot..."):
+        if data_input:
+            # Remove leading/trailing whitespace and empty lines
+            cleaned_data_input = "\n".join(
+                line.strip() for line in data_input.splitlines() if line.strip())
+
+            # Read the data and select the appropriate columns (PCA1, PCA2, and PCA3)
+            data = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0, 1, 2, 3]).rename(columns={1: 'PCA1', 2: 'PCA2', 3: 'PCA3'})
+            populations = data[0]
+
+            if not data.empty and len(populations) >= 2:
+                # Create a 3D scatter plot with labels
+                fig = px.scatter_3d(data, x='PCA1', y='PCA2', z='PCA3', color=populations, title='',
+                                    text=populations, labels={'color': 'Populations'})
+
+                # Customize hover text to show only the label (population name)
+                fig.update_traces(textposition='top center',
+                                  hovertemplate='%{text}')
+
+                # Change the legend title to "Populations"
+                fig.update_layout(legend_title_text='Populations')
+                # Remove the axis labels
+                fig.update_layout(scene=dict(
+                    xaxis_title='', yaxis_title='', zaxis_title=''))
 
                 st.plotly_chart(fig, use_container_width=True)
             else:
