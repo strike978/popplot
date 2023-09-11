@@ -126,15 +126,28 @@ if plot_2d_pca:
             cleaned_data_input = "\n".join(
                 line.strip() for line in data_input.splitlines() if line.strip())
 
-            # Read the data and select only the appropriate columns (PCA1 and PCA2)
+            # Read the data and select all columns except the first one (which contains population labels)
             data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0, 1, 2]).rename(columns={1: 'PCA1', 2: 'PCA2'})
-            populations = data[0]
+                cleaned_data_input), header=None).iloc[:, 1:]
+
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
 
             if not data.empty and len(populations) >= 2:
+                # Perform PCA with all columns
+                pca = PCA(n_components=2)
+                pca_result = pca.fit_transform(data)
+
+                # Create a DataFrame for the PCA results
+                pca_df = pd.DataFrame(
+                    data=pca_result, columns=['PCA1', 'PCA2'])
+
+                # Add the population labels back to the PCA DataFrame
+                pca_df['Populations'] = populations
+
                 # Create a 2D scatter plot with labels
-                fig = px.scatter(data, x='PCA1', y='PCA2', color=populations, title='',
-                                 text=populations, labels={'color': 'Populations'})  # Use populations as labels
+                fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
+                                 title='', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
