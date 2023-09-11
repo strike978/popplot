@@ -171,15 +171,28 @@ if plot_3d_pca:
             cleaned_data_input = "\n".join(
                 line.strip() for line in data_input.splitlines() if line.strip())
 
-            # Read the data and select the appropriate columns (PCA1, PCA2, and PCA3)
+            # Read the data, excluding the first column (which contains population labels)
             data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0, 1, 2, 3]).rename(columns={1: 'PCA1', 2: 'PCA2', 3: 'PCA3'})
-            populations = data[0]
+                cleaned_data_input), header=None).iloc[:, 1:]
+
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
 
             if not data.empty and len(populations) >= 2:
+                # Perform PCA with all columns
+                pca = PCA(n_components=3)  # Perform 3D PCA
+                pca_result = pca.fit_transform(data)
+
+                # Create a DataFrame for the PCA results
+                pca_df = pd.DataFrame(
+                    data=pca_result, columns=['PCA1', 'PCA2', 'PCA3'])
+
+                # Add the population labels back to the PCA DataFrame
+                pca_df['Populations'] = populations
+
                 # Create a 3D scatter plot with labels
-                fig = px.scatter_3d(data, x='PCA1', y='PCA2', z='PCA3', color=populations, title='',
-                                    text=populations, labels={'color': 'Populations'})
+                fig = px.scatter_3d(pca_df, x='PCA1', y='PCA2', z='PCA3', color='Populations',
+                                    title='', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
