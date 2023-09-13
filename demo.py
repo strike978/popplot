@@ -54,15 +54,17 @@ col1, col2 = st.columns(2)
 with col1:
     if st.button("Previous cluster") and cluster_index > 0:
         st.session_state['cluster_index'] -= 1
-
+        st.experimental_rerun()
 with col2:
     if st.button("Next cluster") and cluster_index < len(pop_branches) - 1:
         st.session_state['cluster_index'] += 1
+        st.experimental_rerun()
 
 # Go back to the first cluster
 if cluster_index > 0:
     if st.button("Go back to first cluster"):
         st.session_state['cluster_index'] = 0
+        st.experimental_rerun()
 
 # Writing the value of the cluster_index to the screen.
 cluster_index = st.session_state['cluster_index']
