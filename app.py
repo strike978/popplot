@@ -42,8 +42,14 @@ selected_files = st.multiselect("Time Period:", list(
 
 # Read data from selected files
 selected_data = []
+content_after_comma_set = set()
 for file in selected_files:
-    selected_data.extend(read_data_file(data_files[file]))
+    data = read_data_file(data_files[file])
+    for line in data:
+        content_after_comma = ",".join(line.split(',')[1:])
+        if content_after_comma not in content_after_comma_set:
+            selected_data.append(line)
+            content_after_comma_set.add(content_after_comma)
 
 # Get the populations already in the textbox
 populations_in_textbox = [line.split(
