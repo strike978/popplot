@@ -88,7 +88,7 @@ if data_input != st.session_state.textbox_content.strip():
 current_datetime = datetime.datetime.now()
 file_name = f"data_{current_datetime.strftime('%Y-%m-%d_%H-%M-%S')}.txt"
 
-col1, col2, col3 = st.columns([1, 1, 9])
+col1, col2, col3 = st.columns(3)
 
 with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
