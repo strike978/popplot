@@ -59,20 +59,46 @@ populations_in_textbox = [line.split(
 available_populations = [pop for pop in selected_data if pop.split(
     ',')[0] not in populations_in_textbox]
 
-# Create a Selectbox to display content before the first comma
+group_pop_toggle = st.toggle('Group Populations')
+
+
+# Group populations with the same word before the first ":" when toggle is enabled
+grouped_populations = {}
+if group_pop_toggle:
+    for pop in available_populations:
+        parts = pop.split(',')
+        if len(parts) > 1:
+            key = parts[0].split(':')[0]  # Get the part before the first ":"
+            if key not in grouped_populations:
+                grouped_populations[key] = []
+            grouped_populations[key].append(pop)
+
+# Create a Selectbox to display populations based on the toggle
+if group_pop_toggle:
+    population_options = list(grouped_populations.keys())
+else:
+    population_options = available_populations
+
 selected_option_index = st.selectbox(
     "Populations:",
-    range(len(available_populations)),
-    format_func=lambda i: available_populations[i].split(',')[0]
+    range(len(population_options)),
+    format_func=lambda i: population_options[i].split(',')[0]
 )
 
-# Create a button to add the entire selected option to the Textbox
+# Determine the selected option based on the toggle
+if group_pop_toggle:
+    selected_option = grouped_populations[population_options[selected_option_index]]
+else:
+    selected_option = [population_options[selected_option_index]]
+
+# Create a button to add the selected option to the Textbox
 if st.button("Add Population"):
-    if selected_option_index is not None:
-        selected_option = available_populations[selected_option_index]
-        if selected_option not in st.session_state.textbox_content:
-            st.session_state.textbox_content += "\n" + selected_option
+    if selected_option:
+        for pop in selected_option:
+            if pop not in st.session_state.textbox_content:
+                st.session_state.textbox_content += "\n" + pop
         st.experimental_rerun()
+
 
 # Display the Textbox with the entire selected options
 data_input = st.text_area('Enter data in G25 coordinates format:',
@@ -101,6 +127,7 @@ with col3:
         key="download_data",
         file_name=file_name,
     )
+
 
 if plot_dendrogram:
     with st.spinner("Creating Dendrogram..."):
