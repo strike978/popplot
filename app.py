@@ -9,8 +9,6 @@ from sklearn.decomposition import PCA
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
-if 'deleted_content' not in st.session_state:
-    st.session_state.deleted_content = ""
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
@@ -66,23 +64,17 @@ data_input = st.text_area('Enter data in G25 coordinates format:',
 
 # Check if the Textbox content has changed manually and clear session state if it has
 if data_input != st.session_state.textbox_content.strip():
-    st.session_state.deleted_content = ""
     st.session_state.textbox_content = data_input.strip()
     # Fixes issue with text reverting if changed twice?
     st.experimental_rerun()
 
 
-# The line `col1, col2, col3 = st.columns([1.2, 0.9, 11])` is creating three columns in the Streamlit
-# app interface.
-# col1, col2, col3 = st.columns([1.2, 0.9, 11])
 col1, col2 = st.columns([1, 10])
 
 with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
 with col2:
     plot_2d_pca = st.button('Plot PCA')
-# with col3:
-#     plot_3d_pca = st.button('Plot 3D PCA')
 
 
 if plot_dendrogram:
@@ -164,48 +156,3 @@ if plot_2d_pca:
             else:
                 st.warning(
                     "Please add at least 2 populations before plotting.")
-
-# if plot_3d_pca:
-#     with st.spinner("Creating 3D PCA Plot..."):
-#         if data_input:
-#             # Remove leading/trailing whitespace and empty lines
-#             cleaned_data_input = "\n".join(
-#                 line.strip() for line in data_input.splitlines() if line.strip())
-
-#             # Read the data, excluding the first column (which contains population labels)
-#             data = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None).iloc[:, 1:]
-
-#             populations = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None, usecols=[0])[0]
-
-#             if not data.empty and len(populations) >= 2:
-#                 # Perform PCA with all columns
-#                 pca = PCA(n_components=3)  # Perform 3D PCA
-#                 pca_result = pca.fit_transform(data)
-
-#                 # Create a DataFrame for the PCA results
-#                 pca_df = pd.DataFrame(
-#                     data=pca_result, columns=['PCA1', 'PCA2', 'PCA3'])
-
-#                 # Add the population labels back to the PCA DataFrame
-#                 pca_df['Populations'] = populations
-
-#                 # Create a 3D scatter plot with labels
-#                 fig = px.scatter_3d(pca_df, x='PCA1', y='PCA2', z='PCA3', color='Populations',
-#                                     title='', text='Populations')
-
-#                 # Customize hover text to show only the label (population name)
-#                 fig.update_traces(textposition='top center',
-#                                   hovertemplate='%{text}')
-
-#                 # Change the legend title to "Populations"
-#                 fig.update_layout(legend_title_text='Populations')
-#                 # Remove the axis labels
-#                 fig.update_layout(scene=dict(
-#                     xaxis_title='', yaxis_title='', zaxis_title=''))
-
-#                 st.plotly_chart(fig, use_container_width=True)
-#             else:
-#                 st.warning(
-#                     "Please add at least 2 populations before plotting.")
