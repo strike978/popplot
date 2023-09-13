@@ -5,6 +5,7 @@ import io
 import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
+import datetime
 
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
@@ -69,12 +70,25 @@ if data_input != st.session_state.textbox_content.strip():
     st.experimental_rerun()
 
 
-col1, col2 = st.columns([1, 10])
+# Generate a unique file name based on the current date and time
+current_datetime = datetime.datetime.now()
+file_name = f"data_{current_datetime.strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+
+
+col1, col2, col3 = st.columns([1, 1, 9])
+
 
 with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
 with col2:
     plot_2d_pca = st.button('Plot PCA')
+with col3:
+    st.download_button(
+        label="💾 Save Data",
+        data=data_input,
+        key="download_data",
+        file_name=file_name,
+    )
 
 
 if plot_dendrogram:
