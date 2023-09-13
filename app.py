@@ -45,19 +45,28 @@ selected_data = []
 for file in selected_files:
     selected_data.extend(read_data_file(data_files[file]))
 
+# Get the populations already in the textbox
+populations_in_textbox = [line.split(
+    ',')[0] for line in st.session_state.textbox_content.strip().split('\n')]
+
+# Create a filtered list of available populations
+available_populations = [pop for pop in selected_data if pop.split(
+    ',')[0] not in populations_in_textbox]
+
 # Create a Selectbox to display content before the first comma
 selected_option_index = st.selectbox(
     "Populations:",
-    range(len(selected_data)),
-    format_func=lambda i: selected_data[i].split(',')[0]
+    range(len(available_populations)),
+    format_func=lambda i: available_populations[i].split(',')[0]
 )
 
 # Create a button to add the entire selected option to the Textbox
 if st.button("Add Population"):
     if selected_option_index is not None:
-        selected_option = selected_data[selected_option_index]
+        selected_option = available_populations[selected_option_index]
         if selected_option not in st.session_state.textbox_content:
             st.session_state.textbox_content += "\n" + selected_option
+        st.experimental_rerun()
 
 # Display the Textbox with the entire selected options
 data_input = st.text_area('Enter data in G25 coordinates format:',
@@ -69,14 +78,11 @@ if data_input != st.session_state.textbox_content.strip():
     # Fixes issue with text reverting if changed twice?
     st.experimental_rerun()
 
-
 # Generate a unique file name based on the current date and time
 current_datetime = datetime.datetime.now()
 file_name = f"data_{current_datetime.strftime('%Y-%m-%d_%H-%M-%S')}.txt"
 
-
 col1, col2, col3 = st.columns([1, 1, 9])
-
 
 with col1:
     plot_dendrogram = st.button('Plot Dendrogram')
@@ -89,7 +95,6 @@ with col3:
         key="download_data",
         file_name=file_name,
     )
-
 
 if plot_dendrogram:
     with st.spinner("Creating Dendrogram..."):
