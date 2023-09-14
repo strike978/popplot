@@ -52,12 +52,22 @@ for file in selected_files:
             content_after_comma_set.add(content_after_comma)
 
 # Get the populations already in the textbox
-populations_in_textbox = [line.split(
-    ',')[0] for line in st.session_state.textbox_content.strip().split('\n')]
+# populations_in_textbox = [line.split(
+#     ',')[0] for line in st.session_state.textbox_content.strip().split('\n')]
 
-# Create a filtered list of available populations
+# # Create a filtered list of available populations
+# available_populations = [pop for pop in selected_data if pop.split(
+#     ',')[0] not in populations_in_textbox]
+
+
+# Get the populations already in the textbox
+populations_in_textbox = [line.split(',')[1] if len(line.split(
+    ',')) > 1 else '' for line in st.session_state.textbox_content.strip().split('\n')]
+
+# Create a filtered list of available populations based on content after the comma
 available_populations = [pop for pop in selected_data if pop.split(
-    ',')[0] not in populations_in_textbox]
+    ',')[1] not in populations_in_textbox]
+
 
 group_pop_toggle = st.toggle('Group Populations')
 
