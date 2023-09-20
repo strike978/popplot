@@ -95,11 +95,23 @@ selected_option_index = st.selectbox(
     format_func=lambda i: population_options[i].split(',')[0]
 )
 
-# Determine the selected option based on the toggle
+    # Check if grouping of populations is enabled
 if group_pop_toggle:
-    selected_option = grouped_populations[population_options[selected_option_index]]
+    # Check if a valid index is selected and within the range of population_options
+    if selected_option_index is not None and selected_option_index < len(population_options):
+        # If valid, select the corresponding grouped populations
+        selected_option = grouped_populations[population_options[selected_option_index]]
+    else:
+        # If not valid, set selected_option as an empty list
+        selected_option = []
 else:
-    selected_option = [population_options[selected_option_index]]
+    # If grouping is not enabled, check if a valid index is selected
+    if selected_option_index is not None:
+        # If valid, select the corresponding population option as a list
+        selected_option = [population_options[selected_option_index]]
+    else:
+        # If not valid, set selected_option as an empty list
+        selected_option = []
 
 # Create a button to add the selected option to the Textbox
 if st.button("Add Population"):
