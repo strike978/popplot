@@ -231,5 +231,5 @@ if plot_2d_pca:
                 st.warning(
                     "Please add at least 2 populations before plotting.")
 
-st.caption(
-    "Run Admixture Analysis with [admixtr](http://admixtr.com)")
+# st.caption(
+#     "Run Admixture Analysis with [admixtr](http://admixtr.com)")
