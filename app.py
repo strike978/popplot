@@ -95,7 +95,7 @@ selected_option_index = st.selectbox(
     format_func=lambda i: population_options[i].split(',')[0]
 )
 
-    # Check if grouping of populations is enabled
+# Check if grouping of populations is enabled
 if group_pop_toggle:
     # Check if a valid index is selected and within the range of population_options
     if selected_option_index is not None and selected_option_index < len(population_options):
@@ -123,7 +123,7 @@ if st.button("Add Population"):
 
 
 # Display the Textbox with the entire selected options
-data_input = st.text_area('Enter data in G25 coordinates format:',
+data_input = st.text_area('Enter data in G25 scaled coordinates format:',
                           st.session_state.textbox_content.strip(), height=300, key='textbox_input')
 
 # Check if the Textbox content has changed manually and clear session state if it has
