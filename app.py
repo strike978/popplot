@@ -2,7 +2,6 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
-from scipy.cluster.hierarchy import linkage
 import io
 import plotly.figure_factory as ff
 import plotly.express as px
@@ -144,41 +143,6 @@ with col3:
     )
 
 # Old Dendrogram using Plotly
-# if plot_dendrogram:
-#     with st.spinner("Creating Dendrogram..."):
-#         if data_input:
-#             # Remove leading/trailing whitespace and empty lines
-#             cleaned_data_input = "\n".join(
-#                 line.strip() for line in data_input.splitlines() if line.strip())
-
-#             data = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None).iloc[:, 1:]
-#             populations = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None, usecols=[0])[0]
-
-#             if not data.empty and len(populations) >= 2:
-#                 labels = [i for i in populations]
-#                 height = max(20 * len(populations), 500)
-#                 fig = ff.create_dendrogram(
-#                     data,
-#                     orientation="right",
-#                     labels=labels,
-#                     linkagefun=lambda x: linkage(x, method="ward"),
-#                 )
-#                 fig.update_layout(
-#                     height=height,
-#                     yaxis={'side': 'right'}
-#                 )
-#                 fig.update_yaxes(
-#                     automargin=True,
-#                     range=[0, len(populations)*10]
-#                 )
-
-#                 st.plotly_chart(fig, theme=None, use_container_width=True)
-#             else:
-#                 st.warning(
-#                     "Please add at least 2 populations before plotting.")
-
 if plot_dendrogram:
     with st.spinner("Creating Dendrogram..."):
         if data_input:
@@ -193,28 +157,63 @@ if plot_dendrogram:
 
             if not data.empty and len(populations) >= 2:
                 labels = [i for i in populations]
+                height = max(20 * len(populations), 500)
+                fig = ff.create_dendrogram(
+                    data,
+                    orientation="right",
+                    labels=labels,
+                    linkagefun=lambda x: linkage(x, method="ward"),
+                )
+                fig.update_layout(
+                    height=height,
+                    yaxis={'side': 'right'}
+                )
+                fig.update_yaxes(
+                    automargin=True,
+                    range=[0, len(populations)*10]
+                )
 
-                # Dynamically adjust figure size based on the number of populations
-                num_populations = len(labels)
-                fig_height = max(10, num_populations * 0.1)
-                fig, ax = plt.subplots(figsize=(10, fig_height))
-
-                # Calculate a reasonable spacing between labels
-                spacing = max(5, num_populations // 50)
-
-                dendrogram(linkage(data, method="ward"),
-                           labels=labels, orientation="right")
-
-                # Customize the plot as needed
-                plt.xlabel("Distance")
-                plt.ylabel("Populations")
-
-                # Display the plot in Streamlit
-                st.pyplot(fig, use_container_width=True)
-
+                st.plotly_chart(fig, theme=None, use_container_width=True)
             else:
                 st.warning(
                     "Please add at least 2 populations before plotting.")
+
+# if plot_dendrogram:
+#     with st.spinner("Creating Dendrogram..."):
+#         if data_input:
+#             # Remove leading/trailing whitespace and empty lines
+#             cleaned_data_input = "\n".join(
+#                 line.strip() for line in data_input.splitlines() if line.strip())
+
+#             data = pd.read_csv(io.StringIO(
+#                 cleaned_data_input), header=None).iloc[:, 1:]
+#             populations = pd.read_csv(io.StringIO(
+#                 cleaned_data_input), header=None, usecols=[0])[0]
+
+#             if not data.empty and len(populations) >= 2:
+#                 labels = [i for i in populations]
+
+#                 # Dynamically adjust figure size based on the number of populations
+#                 num_populations = len(labels)
+#                 fig_height = max(10, num_populations * 0.1)
+#                 fig, ax = plt.subplots(figsize=(10, fig_height))
+
+#                 # Calculate a reasonable spacing between labels
+#                 spacing = max(5, num_populations // 50)
+
+#                 dendrogram(linkage(data, method="ward"),
+#                            labels=labels, orientation="right")
+
+#                 # Customize the plot as needed
+#                 plt.xlabel("Distance")
+#                 plt.ylabel("Populations")
+
+#                 # Display the plot in Streamlit
+#                 st.pyplot(fig, use_container_width=True)
+
+#             else:
+#                 st.warning(
+#                     "Please add at least 2 populations before plotting.")
 
 
 if plot_2d_pca:
