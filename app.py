@@ -16,8 +16,12 @@ if 'textbox_content' not in st.session_state:
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
 st.header('Pop:green[Plot]')
 
+# st.caption(
+#     'This site is optimized for desktop computers. You may experience some difficulty viewing it on a mobile device.')
+
 st.caption(
-    'This site is optimized for desktop computers. You may experience some difficulty viewing it on a mobile device.')
+    'The closer two individuals or populations are on the dendrogram, the more recent their common ancestry. Branches that join together represent a shared ancestry. The dendrogram can also highlight instances where populations have mixed, leading to a shared genetic heritage. This can occur due to migrations, conquests, or other historical events.')
+
 
 # Define the available data files
 data_files = {
@@ -131,16 +135,16 @@ file_name = f"data_{current_datetime.strftime('%Y-%m-%d_%H-%M-%S')}.txt"
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    plot_dendrogram = st.button('Plot Dendrogram')
-with col2:
-    plot_2d_pca = st.button('Plot PCA')
-with col3:
-    st.download_button(
-        label="💾 Save Text Data",
-        data=data_input,
-        key="download_data",
-        file_name=file_name,
-    )
+    plot_dendrogram = st.button('Plot Populations')
+# with col2:
+#     plot_2d_pca = st.button('Plot PCA')
+# with col3:
+#     st.download_button(
+#         label="💾 Save Text Data",
+#         data=data_input,
+#         key="download_data",
+#         file_name=file_name,
+#     )
 
 # Old Dendrogram using Plotly
 if plot_dendrogram:
@@ -216,47 +220,47 @@ if plot_dendrogram:
 #                     "Please add at least 2 populations before plotting.")
 
 
-if plot_2d_pca:
-    with st.spinner("Creating 2D PCA Plot..."):
-        if data_input:
-            # Remove leading/trailing whitespace and empty lines
-            cleaned_data_input = "\n".join(
-                line.strip() for line in data_input.splitlines() if line.strip())
+# if plot_2d_pca:
+#     with st.spinner("Creating 2D PCA Plot..."):
+#         if data_input:
+#             # Remove leading/trailing whitespace and empty lines
+#             cleaned_data_input = "\n".join(
+#                 line.strip() for line in data_input.splitlines() if line.strip())
 
-            # Read the data and select all columns except the first one (which contains population labels)
-            data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None).iloc[:, 1:]
+#             # Read the data and select all columns except the first one (which contains population labels)
+#             data = pd.read_csv(io.StringIO(
+#                 cleaned_data_input), header=None).iloc[:, 1:]
 
-            populations = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0])[0]
+#             populations = pd.read_csv(io.StringIO(
+#                 cleaned_data_input), header=None, usecols=[0])[0]
 
-            if not data.empty and len(populations) >= 2:
-                # Perform PCA with all columns
-                pca = PCA(n_components=2)
-                pca_result = pca.fit_transform(data)
+#             if not data.empty and len(populations) >= 2:
+#                 # Perform PCA with all columns
+#                 pca = PCA(n_components=2)
+#                 pca_result = pca.fit_transform(data)
 
-                # Create a DataFrame for the PCA results
-                pca_df = pd.DataFrame(
-                    data=pca_result, columns=['PCA1', 'PCA2'])
+#                 # Create a DataFrame for the PCA results
+#                 pca_df = pd.DataFrame(
+#                     data=pca_result, columns=['PCA1', 'PCA2'])
 
-                # Add the population labels back to the PCA DataFrame
-                pca_df['Populations'] = populations
+#                 # Add the population labels back to the PCA DataFrame
+#                 pca_df['Populations'] = populations
 
-                # Create a 2D scatter plot with labels
-                fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
-                                 title='', text='Populations')
+#                 # Create a 2D scatter plot with labels
+#                 fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
+#                                  title='', text='Populations')
 
-                # Customize hover text to show only the label (population name)
-                fig.update_traces(textposition='top center',
-                                  hovertemplate='%{text}')
+#                 # Customize hover text to show only the label (population name)
+#                 fig.update_traces(textposition='top center',
+#                                   hovertemplate='%{text}')
 
-                # Change the legend title to "Populations"
-                fig.update_layout(legend_title_text='Populations')
-                # Remove the axis labels
-                fig.update_xaxes(title_text='')
-                fig.update_yaxes(title_text='')
+#                 # Change the legend title to "Populations"
+#                 fig.update_layout(legend_title_text='Populations')
+#                 # Remove the axis labels
+#                 fig.update_xaxes(title_text='')
+#                 fig.update_yaxes(title_text='')
 
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning(
-                    "Please add at least 2 populations before plotting.")
+#                 st.plotly_chart(fig, use_container_width=True)
+#             else:
+#                 st.warning(
+#                     "Please add at least 2 populations before plotting.")
