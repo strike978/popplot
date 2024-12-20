@@ -127,7 +127,7 @@ with col1:
             st.rerun()
 
 with col2:
-    if st.button("❌ Clear Populations"):
+    if st.button("🧹 Clear Populations"):
         st.session_state.textbox_content = ""
         st.rerun()
 
