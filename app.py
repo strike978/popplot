@@ -12,8 +12,8 @@ if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
-st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
-st.header('Pop:green[Plot]')
+st.set_page_config(layout="wide", page_title="PopPlot", page_icon="📊")
+st.title('Pop:green[Plot]')
 
 # Define the available data files
 data_files = {
@@ -80,7 +80,7 @@ else:
     population_options = available_populations
 
 # Ensure the selected index is within the valid range
-if st.session_state.selected_option_index >= len(population_options):
+if st.session_state.selected_option_index is None or st.session_state.selected_option_index >= len(population_options):
     st.session_state.selected_option_index = 0
 
 selected_option_index = st.selectbox(
@@ -127,7 +127,7 @@ with col1:
             st.rerun()
 
 with col2:
-    if st.button("🗑️ Clear Populations"):
+    if st.button("❌ Clear Populations"):
         st.session_state.textbox_content = ""
         st.rerun()
 
@@ -151,20 +151,26 @@ with tab1:
             cleaned_data_input = "\n".join(
                 line.strip() for line in data_input.splitlines() if line.strip())
 
+            # Read the data and select all columns except the first one (which contains population labels)
             data = pd.read_csv(io.StringIO(
                 cleaned_data_input), header=None).iloc[:, 1:]
             populations = pd.read_csv(io.StringIO(
                 cleaned_data_input), header=None, usecols=[0])[0]
 
+            # Check if data is not empty and there are at least 3 populations
             if not data.empty and len(populations) >= 3:
                 labels = [i for i in populations]
                 height = max(20 * len(populations), 500)
+
+                # Create the dendrogram using hierarchical clustering
                 fig = ff.create_dendrogram(
                     data,
                     orientation="right",
                     labels=labels,
                     linkagefun=lambda x: linkage(x, method="ward"),
                 )
+
+                # Update the layout of the dendrogram
                 fig.update_layout(
                     height=height,
                     yaxis={'side': 'right'}
@@ -174,14 +180,15 @@ with tab1:
                     range=[0, len(populations)*10]
                 )
 
+                # Add a caption and display the dendrogram
                 st.caption(
-                    'The closer two individuals or populations are on the dendrogram, the more recent their common ancestry. Branches that join together represent a shared ancestry. The dendrogram can also highlight instances where populations have mixed, leading to a shared genetic heritage. This can occur due to migrations, conquests, or other historical events.')
+                    'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
                 st.plotly_chart(fig, theme=None, use_container_width=True)
             else:
-                st.warning(
+                st.info(
                     "Please add at least 3 populations before plotting.")
         else:
-            st.warning(
+            st.info(
                 "Please add at least 3 populations before plotting.")
 
 with tab2:
@@ -226,10 +233,10 @@ with tab2:
 
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning(
+                st.info(
                     "Please add at least 3 populations before plotting.")
         else:
-            st.warning(
+            st.info(
                 "Please add at least 3 populations before plotting.")
 
 with tab3:
@@ -280,10 +287,10 @@ with tab3:
 
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning(
+                st.info(
                     "Please add at least 4 populations before plotting.")
         else:
-            st.warning(
+            st.info(
                 "Please add at least 4 populations before plotting.")
 
 with tab4:
@@ -328,8 +335,8 @@ with tab4:
 
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning(
+                st.info(
                     "Please add at least 3 populations before plotting.")
         else:
-            st.warning(
+            st.info(
                 "Please add at least 3 populations before plotting.")
