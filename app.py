@@ -235,7 +235,7 @@ if plot_pca_2d:
 
                 # Create a 2D scatter plot with labels
                 fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
-                                 title='', text='Populations')
+                                 title='2D PCA Plot', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
@@ -284,7 +284,7 @@ if plot_pca_3d:
 
                 # Create a 3D scatter plot with labels
                 fig = px.scatter_3d(pca_df, x='PCA1', y='PCA2', z='PCA3', color='Populations',
-                                    title='', text='Populations')
+                                    title='3D PCA Plot', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
@@ -339,7 +339,7 @@ if plot_mds:
 
                 # Create a 2D scatter plot with labels
                 fig = px.scatter(mds_df, x='MDS1', y='MDS2', color='Populations',
-                                 title='', text='Populations')
+                                 title='2D MDS Plot', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
@@ -392,7 +392,7 @@ if plot_tsne:
 
                 # Create a 2D scatter plot with labels
                 fig = px.scatter(tsne_df, x='TSNE1', y='TSNE2', color='Populations',
-                                 title='', text='Populations')
+                                 title='2D t-SNE Plot', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
@@ -441,7 +441,7 @@ if plot_umap:
 
                 # Create a 2D scatter plot with labels
                 fig = px.scatter(umap_df, x='UMAP1', y='UMAP2', color='Populations',
-                                 title='', text='Populations')
+                                 title='2D UMAP Plot', text='Populations')
 
                 # Customize hover text to show only the label (population name)
                 fig.update_traces(textposition='top center',
