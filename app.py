@@ -1,12 +1,11 @@
 from scipy.cluster.hierarchy import linkage, dendrogram
-import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
 import io
 import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
-import datetime
+from sklearn.manifold import MDS
 
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
@@ -15,13 +14,6 @@ if 'textbox_content' not in st.session_state:
 # Setting the layout of the page to wide and the title of the page to PopPlot
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🧬")
 st.header('Pop:green[Plot]')
-
-# st.caption(
-#     'This site is optimized for desktop computers. You may experience some difficulty viewing it on a mobile device.')
-
-st.caption(
-    'The closer two individuals or populations are on the dendrogram, the more recent their common ancestry. Branches that join together represent a shared ancestry. The dendrogram can also highlight instances where populations have mixed, leading to a shared genetic heritage. This can occur due to migrations, conquests, or other historical events.')
-
 
 # Define the available data files
 data_files = {
@@ -64,9 +56,7 @@ populations_in_textbox = [line.split(',')[1] if len(line.split(
 available_populations = [pop for pop in selected_data if pop.split(
     ',')[1] not in populations_in_textbox]
 
-
-group_pop_toggle = st.toggle('Group Populations')
-
+group_pop_toggle = st.checkbox('Group Populations')
 
 # Group populations with the same word before the first ":" when toggle is enabled
 grouped_populations = {}
@@ -79,17 +69,30 @@ if group_pop_toggle:
                 grouped_populations[key] = []
             grouped_populations[key].append(pop)
 
+# Preserve the selected index in session state
+if 'selected_option_index' not in st.session_state:
+    st.session_state.selected_option_index = 0
+
 # Create a Selectbox to display populations based on the toggle
 if group_pop_toggle:
     population_options = list(grouped_populations.keys())
 else:
     population_options = available_populations
 
+# Ensure the selected index is within the valid range
+if st.session_state.selected_option_index >= len(population_options):
+    st.session_state.selected_option_index = 0
+
 selected_option_index = st.selectbox(
     "Populations:",
     range(len(population_options)),
-    format_func=lambda i: population_options[i].split(',')[0]
+    format_func=lambda i: population_options[i].split(',')[0],
+    key='population_selectbox',
+    index=st.session_state.selected_option_index
 )
+
+# Update the session state with the selected index
+st.session_state.selected_option_index = selected_option_index
 
 # Check if grouping of populations is enabled
 if group_pop_toggle:
@@ -109,45 +112,39 @@ else:
         # If not valid, set selected_option as an empty list
         selected_option = []
 
-# Create a button to add the selected option to the Textbox
-if st.button("Add Population"):
-    if selected_option:
-        for pop in selected_option:
-            if pop not in st.session_state.textbox_content:
-                st.session_state.textbox_content += "\n" + pop
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("➕ Add Population"):
+        if selected_option:
+            for pop in selected_option:
+                # Remove all text before the last ":"
+                parts = pop.split(':')
+                if len(parts) > 1:
+                    pop = parts[-1]
+                if pop not in st.session_state.textbox_content:
+                    st.session_state.textbox_content += "\n" + pop
+            st.rerun()
+
+with col2:
+    if st.button("🗑️ Clear Populations"):
+        st.session_state.textbox_content = ""
         st.rerun()
 
-
 # Display the Textbox with the entire selected options
-data_input = st.text_area('Enter data in G25 scaled coordinates format:',
+data_input = st.text_area('Enter data in PCA coordinates format:',
                           st.session_state.textbox_content.strip(), height=300, key='textbox_input')
 
 # Check if the Textbox content has changed manually and clear session state if it has
 if data_input != st.session_state.textbox_content.strip():
     st.session_state.textbox_content = data_input.strip()
-    # Fixes issue with text reverting if changed twice?
     st.rerun()
 
-# Generate a unique file name based on the current date and time
-current_datetime = datetime.datetime.now()
-file_name = f"data_{current_datetime.strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+# Create tabs for different plots
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📈 Clusters", "🔬 PCA (2D)", "🔬 PCA (3D)", "🌐 MDS"])
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    plot_dendrogram = st.button('Plot Populations')
-# with col2:
-#     plot_2d_pca = st.button('Plot PCA')
-# with col3:
-#     st.download_button(
-#         label="💾 Save Text Data",
-#         data=data_input,
-#         key="download_data",
-#         file_name=file_name,
-#     )
-
-# Old Dendrogram using Plotly
-if plot_dendrogram:
+with tab1:
     with st.spinner("Creating Dendrogram..."):
         if data_input:
             # Remove leading/trailing whitespace and empty lines
@@ -159,7 +156,7 @@ if plot_dendrogram:
             populations = pd.read_csv(io.StringIO(
                 cleaned_data_input), header=None, usecols=[0])[0]
 
-            if not data.empty and len(populations) >= 2:
+            if not data.empty and len(populations) >= 3:
                 labels = [i for i in populations]
                 height = max(20 * len(populations), 500)
                 fig = ff.create_dendrogram(
@@ -177,90 +174,162 @@ if plot_dendrogram:
                     range=[0, len(populations)*10]
                 )
 
+                st.caption(
+                    'The closer two individuals or populations are on the dendrogram, the more recent their common ancestry. Branches that join together represent a shared ancestry. The dendrogram can also highlight instances where populations have mixed, leading to a shared genetic heritage. This can occur due to migrations, conquests, or other historical events.')
                 st.plotly_chart(fig, theme=None, use_container_width=True)
             else:
                 st.warning(
-                    "Please add at least 2 populations before plotting.")
+                    "Please add at least 3 populations before plotting.")
+        else:
+            st.warning(
+                "Please add at least 3 populations before plotting.")
 
-# if plot_dendrogram:
-#     with st.spinner("Creating Dendrogram..."):
-#         if data_input:
-#             # Remove leading/trailing whitespace and empty lines
-#             cleaned_data_input = "\n".join(
-#                 line.strip() for line in data_input.splitlines() if line.strip())
+with tab2:
+    with st.spinner("Creating 2D PCA Plot..."):
+        if data_input:
+            # Remove leading/trailing whitespace and empty lines
+            cleaned_data_input = "\n".join(
+                line.strip() for line in data_input.splitlines() if line.strip())
 
-#             data = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None).iloc[:, 1:]
-#             populations = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None, usecols=[0])[0]
+            # Read the data and select all columns except the first one (which contains population labels)
+            data = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None).iloc[:, 1:]
 
-#             if not data.empty and len(populations) >= 2:
-#                 labels = [i for i in populations]
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
 
-#                 # Dynamically adjust figure size based on the number of populations
-#                 num_populations = len(labels)
-#                 fig_height = max(10, num_populations * 0.1)
-#                 fig, ax = plt.subplots(figsize=(10, fig_height))
+            if not data.empty and len(populations) >= 3:
+                # Perform PCA with all columns
+                pca = PCA(n_components=2)
+                pca_result = pca.fit_transform(data)
 
-#                 # Calculate a reasonable spacing between labels
-#                 spacing = max(5, num_populations // 50)
+                # Create a DataFrame for the PCA results
+                pca_df = pd.DataFrame(
+                    data=pca_result, columns=['PCA1', 'PCA2'])
 
-#                 dendrogram(linkage(data, method="ward"),
-#                            labels=labels, orientation="right")
+                # Add the population labels back to the PCA DataFrame
+                pca_df['Populations'] = populations
 
-#                 # Customize the plot as needed
-#                 plt.xlabel("Distance")
-#                 plt.ylabel("Populations")
+                # Create a 2D scatter plot with labels
+                fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
+                                 title='', text='Populations')
 
-#                 # Display the plot in Streamlit
-#                 st.pyplot(fig, use_container_width=True)
+                # Customize hover text to show only the label (population name)
+                fig.update_traces(textposition='top center',
+                                  hovertemplate='%{text}')
 
-#             else:
-#                 st.warning(
-#                     "Please add at least 2 populations before plotting.")
+                # Change the legend title to "Populations"
+                fig.update_layout(legend_title_text='Populations')
+                # Remove the axis labels
+                fig.update_xaxes(title_text='')
+                fig.update_yaxes(title_text='')
 
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(
+                    "Please add at least 3 populations before plotting.")
+        else:
+            st.warning(
+                "Please add at least 3 populations before plotting.")
 
-# if plot_2d_pca:
-#     with st.spinner("Creating 2D PCA Plot..."):
-#         if data_input:
-#             # Remove leading/trailing whitespace and empty lines
-#             cleaned_data_input = "\n".join(
-#                 line.strip() for line in data_input.splitlines() if line.strip())
+with tab3:
+    with st.spinner("Creating 3D PCA Plot..."):
+        if data_input:
+            # Remove leading/trailing whitespace and empty lines
+            cleaned_data_input = "\n".join(
+                line.strip() for line in data_input.splitlines() if line.strip())
 
-#             # Read the data and select all columns except the first one (which contains population labels)
-#             data = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None).iloc[:, 1:]
+            # Read the data and select all columns except the first one (which contains population labels)
+            data = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None).iloc[:, 1:]
 
-#             populations = pd.read_csv(io.StringIO(
-#                 cleaned_data_input), header=None, usecols=[0])[0]
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
 
-#             if not data.empty and len(populations) >= 2:
-#                 # Perform PCA with all columns
-#                 pca = PCA(n_components=2)
-#                 pca_result = pca.fit_transform(data)
+            if not data.empty and len(populations) >= 4:
+                # Perform PCA with all columns
+                pca = PCA(n_components=3)
+                pca_result = pca.fit_transform(data)
 
-#                 # Create a DataFrame for the PCA results
-#                 pca_df = pd.DataFrame(
-#                     data=pca_result, columns=['PCA1', 'PCA2'])
+                # Create a DataFrame for the PCA results
+                pca_df = pd.DataFrame(
+                    data=pca_result, columns=['PCA1', 'PCA2', 'PCA3'])
 
-#                 # Add the population labels back to the PCA DataFrame
-#                 pca_df['Populations'] = populations
+                # Add the population labels back to the PCA DataFrame
+                pca_df['Populations'] = populations
 
-#                 # Create a 2D scatter plot with labels
-#                 fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
-#                                  title='', text='Populations')
+                # Create a 3D scatter plot with labels
+                fig = px.scatter_3d(pca_df, x='PCA1', y='PCA2', z='PCA3', color='Populations',
+                                    title='', text='Populations')
 
-#                 # Customize hover text to show only the label (population name)
-#                 fig.update_traces(textposition='top center',
-#                                   hovertemplate='%{text}')
+                # Customize hover text to show only the label (population name)
+                fig.update_traces(textposition='top center',
+                                  hovertemplate='%{text}')
 
-#                 # Change the legend title to "Populations"
-#                 fig.update_layout(legend_title_text='Populations')
-#                 # Remove the axis labels
-#                 fig.update_xaxes(title_text='')
-#                 fig.update_yaxes(title_text='')
+                # Change the legend title to "Populations"
+                fig.update_layout(legend_title_text='Populations')
+                # Ensure proper scaling of the axes
+                fig.update_layout(scene=dict(
+                    xaxis=dict(title='', range=[
+                               pca_df['PCA1'].min(), pca_df['PCA1'].max()]),
+                    yaxis=dict(title='', range=[
+                               pca_df['PCA2'].min(), pca_df['PCA2'].max()]),
+                    zaxis=dict(title='', range=[
+                               pca_df['PCA3'].min(), pca_df['PCA3'].max()])
+                ))
 
-#                 st.plotly_chart(fig, use_container_width=True)
-#             else:
-#                 st.warning(
-#                     "Please add at least 2 populations before plotting.")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(
+                    "Please add at least 4 populations before plotting.")
+        else:
+            st.warning(
+                "Please add at least 4 populations before plotting.")
+
+with tab4:
+    with st.spinner("Creating 2D MDS Plot..."):
+        if data_input:
+            # Remove leading/trailing whitespace and empty lines
+            cleaned_data_input = "\n".join(
+                line.strip() for line in data_input.splitlines() if line.strip())
+
+            # Read the data and select all columns except the first one (which contains population labels)
+            data = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None).iloc[:, 1:]
+
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
+
+            if not data.empty and len(populations) >= 3:
+                # Perform MDS with all columns
+                mds = MDS(n_components=2, dissimilarity='euclidean')
+                mds_result = mds.fit_transform(data)
+
+                # Create a DataFrame for the MDS results
+                mds_df = pd.DataFrame(
+                    data=mds_result, columns=['MDS1', 'MDS2'])
+
+                # Add the population labels back to the MDS DataFrame
+                mds_df['Populations'] = populations
+
+                # Create a 2D scatter plot with labels
+                fig = px.scatter(mds_df, x='MDS1', y='MDS2', color='Populations',
+                                 title='', text='Populations')
+
+                # Customize hover text to show only the label (population name)
+                fig.update_traces(textposition='top center',
+                                  hovertemplate='%{text}')
+
+                # Change the legend title to "Populations"
+                fig.update_layout(legend_title_text='Populations')
+                # Remove the axis labels
+                fig.update_xaxes(title_text='')
+                fig.update_yaxes(title_text='')
+
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(
+                    "Please add at least 3 populations before plotting.")
+        else:
+            st.warning(
+                "Please add at least 3 populations before plotting.")
