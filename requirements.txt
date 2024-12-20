@@ -6,4 +6,3 @@ scipy==1.10.0
 scikit-learn==1.2.1
 plotly
 matplotlib==3.8.0
-umap-learn==0.5.7
