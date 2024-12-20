@@ -12,7 +12,7 @@ if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
-st.set_page_config(layout="wide", page_title="PopPlot", page_icon="📊")
+st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌐")
 st.title('Pop:green[Plot]')
 
 # Define the available data files
@@ -141,8 +141,8 @@ if data_input != st.session_state.textbox_content.strip():
     st.rerun()
 
 # Create tabs for different plots
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["📈 Clusters", "🔬 PCA (2D)", "🔬 PCA (3D)", "🌐 MDS"])
+tab1, tab2, tab3 = st.tabs(
+    ["🌳 Dendrogram", "📊 2D PCA", "🔬 3D PCA"])
 
 with tab1:
     with st.spinner("Creating Dendrogram..."):
@@ -292,51 +292,3 @@ with tab3:
         else:
             st.info(
                 "Please add at least 4 populations before plotting.")
-
-with tab4:
-    with st.spinner("Creating 2D MDS Plot..."):
-        if data_input:
-            # Remove leading/trailing whitespace and empty lines
-            cleaned_data_input = "\n".join(
-                line.strip() for line in data_input.splitlines() if line.strip())
-
-            # Read the data and select all columns except the first one (which contains population labels)
-            data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None).iloc[:, 1:]
-
-            populations = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0])[0]
-
-            if not data.empty and len(populations) >= 3:
-                # Perform MDS with all columns
-                mds = MDS(n_components=2, dissimilarity='euclidean')
-                mds_result = mds.fit_transform(data)
-
-                # Create a DataFrame for the MDS results
-                mds_df = pd.DataFrame(
-                    data=mds_result, columns=['MDS1', 'MDS2'])
-
-                # Add the population labels back to the MDS DataFrame
-                mds_df['Populations'] = populations
-
-                # Create a 2D scatter plot with labels
-                fig = px.scatter(mds_df, x='MDS1', y='MDS2', color='Populations',
-                                 title='', text='Populations')
-
-                # Customize hover text to show only the label (population name)
-                fig.update_traces(textposition='top center',
-                                  hovertemplate='%{text}')
-
-                # Change the legend title to "Populations"
-                fig.update_layout(legend_title_text='Populations')
-                # Remove the axis labels
-                fig.update_xaxes(title_text='')
-                fig.update_yaxes(title_text='')
-
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info(
-                    "Please add at least 3 populations before plotting.")
-        else:
-            st.info(
-                "Please add at least 3 populations before plotting.")
