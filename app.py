@@ -7,6 +7,7 @@ import plotly.express as px
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
+from umap import UMAP
 
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
@@ -142,18 +143,20 @@ if data_input != st.session_state.textbox_content.strip():
     st.rerun()
 
 # Create buttons for different plots
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4, col5, col6 = st.columns(6)
 
 with col1:
-    plot_clusters = st.button("Plot Dendrogram")
+    plot_clusters = st.button("Dendrogram")
 with col2:
-    plot_pca_2d = st.button("Plot PCA (2D)")
+    plot_pca_2d = st.button("PCA (2D)")
 with col3:
-    plot_pca_3d = st.button("Plot PCA (3D)")
+    plot_pca_3d = st.button("PCA (3D)")
 with col4:
-    plot_mds = st.button("Plot MDS")
+    plot_mds = st.button("MDS")
 with col5:
-    plot_tsne = st.button("Plot t-SNE")
+    plot_umap = st.button("UMAP")
+with col6:
+    plot_tsne = st.button("t-SNE")
 
 # Plot Clusters
 if plot_clusters:
@@ -389,6 +392,55 @@ if plot_tsne:
 
                 # Create a 2D scatter plot with labels
                 fig = px.scatter(tsne_df, x='TSNE1', y='TSNE2', color='Populations',
+                                 title='', text='Populations')
+
+                # Customize hover text to show only the label (population name)
+                fig.update_traces(textposition='top center',
+                                  hovertemplate='%{text}')
+
+                # Change the legend title to "Populations"
+                fig.update_layout(legend_title_text='Populations')
+                # Remove the axis labels
+                fig.update_xaxes(title_text='')
+                fig.update_yaxes(title_text='')
+
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info(
+                    "Please add at least 3 populations before plotting.")
+        else:
+            st.info(
+                "Please add at least 3 populations before plotting.")
+
+# Plot UMAP
+if plot_umap:
+    with st.spinner("Creating 2D UMAP Plot..."):
+        if data_input:
+            # Remove leading/trailing whitespace and empty lines
+            cleaned_data_input = "\n".join(
+                line.strip() for line in data_input.splitlines() if line.strip())
+
+            # Read the data and select all columns except the first one (which contains population labels)
+            data = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None).iloc[:, 1:]
+
+            populations = pd.read_csv(io.StringIO(
+                cleaned_data_input), header=None, usecols=[0])[0]
+
+            if not data.empty and len(populations) >= 3:
+                # Perform UMAP with all columns
+                umap = UMAP(n_components=2)
+                umap_result = umap.fit_transform(data)
+
+                # Create a DataFrame for the UMAP results
+                umap_df = pd.DataFrame(
+                    data=umap_result, columns=['UMAP1', 'UMAP2'])
+
+                # Add the population labels back to the UMAP DataFrame
+                umap_df['Populations'] = populations
+
+                # Create a 2D scatter plot with labels
+                fig = px.scatter(umap_df, x='UMAP1', y='UMAP2', color='Populations',
                                  title='', text='Populations')
 
                 # Customize hover text to show only the label (population name)
