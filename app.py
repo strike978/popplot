@@ -5,14 +5,14 @@ import io
 import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
-from sklearn.manifold import MDS
+
 
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
-st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌐")
+st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌎")
 st.header('Pop:green[Plot]')
 
 # Define the available data files
