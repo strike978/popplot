@@ -142,10 +142,10 @@ if data_input != st.session_state.textbox_content.strip():
 
 # Create tabs for different plots
 tab1, tab2 = st.tabs(
-    ["🌳 Dendrogram", "📈 PCA"])
+    ["🌳 Tree", "📈 PCA"])
 
 with tab1:
-    with st.spinner("Creating Dendrogram..."):
+    with st.spinner("Creating Tree..."):
         if data_input:
             # Remove leading/trailing whitespace and empty lines
             cleaned_data_input = "\n".join(
