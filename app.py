@@ -13,7 +13,7 @@ if 'textbox_content' not in st.session_state:
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌐")
-st.title('Pop:green[Plot]')
+st.header('Pop:green[Plot]')
 
 # Define the available data files
 data_files = {
@@ -141,8 +141,8 @@ if data_input != st.session_state.textbox_content.strip():
     st.rerun()
 
 # Create tabs for different plots
-tab1, tab2, tab3 = st.tabs(
-    ["🌳 Dendrogram", "📊 2D PCA", "🔬 3D PCA"])
+tab1, tab2 = st.tabs(
+    ["🌳 Dendrogram", "📈 PCA"])
 
 with tab1:
     with st.spinner("Creating Dendrogram..."):
@@ -192,7 +192,7 @@ with tab1:
                 "Please add at least 3 populations before plotting.")
 
 with tab2:
-    with st.spinner("Creating 2D PCA Plot..."):
+    with st.spinner("Creating PCA Plot..."):
         if data_input:
             # Remove leading/trailing whitespace and empty lines
             cleaned_data_input = "\n".join(
@@ -238,57 +238,3 @@ with tab2:
         else:
             st.info(
                 "Please add at least 3 populations before plotting.")
-
-with tab3:
-    with st.spinner("Creating 3D PCA Plot..."):
-        if data_input:
-            # Remove leading/trailing whitespace and empty lines
-            cleaned_data_input = "\n".join(
-                line.strip() for line in data_input.splitlines() if line.strip())
-
-            # Read the data and select all columns except the first one (which contains population labels)
-            data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None).iloc[:, 1:]
-
-            populations = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0])[0]
-
-            if not data.empty and len(populations) >= 4:
-                # Perform PCA with all columns
-                pca = PCA(n_components=3)
-                pca_result = pca.fit_transform(data)
-
-                # Create a DataFrame for the PCA results
-                pca_df = pd.DataFrame(
-                    data=pca_result, columns=['PCA1', 'PCA2', 'PCA3'])
-
-                # Add the population labels back to the PCA DataFrame
-                pca_df['Populations'] = populations
-
-                # Create a 3D scatter plot with labels
-                fig = px.scatter_3d(pca_df, x='PCA1', y='PCA2', z='PCA3', color='Populations',
-                                    title='', text='Populations')
-
-                # Customize hover text to show only the label (population name)
-                fig.update_traces(textposition='top center',
-                                  hovertemplate='%{text}')
-
-                # Change the legend title to "Populations"
-                fig.update_layout(legend_title_text='Populations')
-                # Ensure proper scaling of the axes
-                fig.update_layout(scene=dict(
-                    xaxis=dict(title='', range=[
-                               pca_df['PCA1'].min(), pca_df['PCA1'].max()]),
-                    yaxis=dict(title='', range=[
-                               pca_df['PCA2'].min(), pca_df['PCA2'].max()]),
-                    zaxis=dict(title='', range=[
-                               pca_df['PCA3'].min(), pca_df['PCA3'].max()])
-                ))
-
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info(
-                    "Please add at least 4 populations before plotting.")
-        else:
-            st.info(
-                "Please add at least 4 populations before plotting.")
