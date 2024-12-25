@@ -217,7 +217,8 @@ with tab1:
                 # Add a caption and display the dendrogram
                 st.caption(
                     'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
-                st.plotly_chart(fig, theme=None, use_container_width=True)
+                st.plotly_chart(fig, theme=None, use_container_width=True, config={
+                                'displayModeBar': True})
             else:
                 st.info(
                     "Please add at least 3 populations before plotting.")
@@ -265,7 +266,8 @@ with tab2:
                 fig.update_xaxes(title_text='')
                 fig.update_yaxes(title_text='')
 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True,
+                                config={'displayModeBar': True})
             else:
                 st.info(
                     "Please add at least 3 populations before plotting.")
