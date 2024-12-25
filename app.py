@@ -220,11 +220,11 @@ with tab1:
                 st.plotly_chart(fig, theme=None, use_container_width=True, config={
                                 'displayModeBar': True})
             else:
-                st.info(
-                    "Please add at least 3 populations before plotting.")
+                st.warning(
+                    "Please add at least 3 populations before plotting.", icon="⚠️")
         else:
-            st.info(
-                "Please add at least 3 populations before plotting.")
+            st.warning(
+                "Please add at least 3 populations before plotting.", icon="⚠️")
 
 with tab2:
     with st.spinner("Creating PCA Plot..."):
@@ -269,8 +269,8 @@ with tab2:
                 st.plotly_chart(fig, use_container_width=True,
                                 config={'displayModeBar': True})
             else:
-                st.info(
-                    "Please add at least 3 populations before plotting.")
+                st.warning(
+                    "Please add at least 3 populations before plotting.", icon="⚠️")
         else:
-            st.info(
-                "Please add at least 3 populations before plotting.")
+            st.warning(
+                "Please add at least 3 populations before plotting.", icon="⚠️")
