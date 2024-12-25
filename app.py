@@ -150,21 +150,22 @@ with col2:
         st.session_state.textbox_content = ""
         st.rerun()
 
-with col3:
-    if st.button("↩️ Undo"):
-        if st.session_state.textbox_history:
-            st.session_state.redo_history.append(
-                st.session_state.textbox_content)
-            st.session_state.textbox_content = st.session_state.textbox_history.pop()
-        st.rerun()
+# Commenting out Undo and Redo buttons
+# with col3:
+#     if st.button("↩️ Undo"):
+#         if st.session_state.textbox_history:
+#             st.session_state.redo_history.append(
+#                 st.session_state.textbox_content)
+#             st.session_state.textbox_content = st.session_state.textbox_history.pop()
+#         st.rerun()
 
-with col4:
-    if st.button("↪️ Redo"):
-        if st.session_state.redo_history:
-            st.session_state.textbox_history.append(
-                st.session_state.textbox_content)
-            st.session_state.textbox_content = st.session_state.redo_history.pop()
-        st.rerun()
+# with col4:
+#     if st.button("↪️ Redo"):
+#         if st.session_state.redo_history:
+#             st.session_state.textbox_history.append(
+#                 st.session_state.textbox_content)
+#             st.session_state.textbox_content = st.session_state.redo_history.pop()
+#         st.rerun()
 
 # Display the Textbox with the entire selected options
 data_input = st.text_area('Enter data in PCA coordinates format:',
