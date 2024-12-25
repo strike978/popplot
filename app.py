@@ -10,6 +10,10 @@ from sklearn.decomposition import PCA
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
+if 'textbox_history' not in st.session_state:
+    st.session_state.textbox_history = []
+if 'redo_history' not in st.session_state:
+    st.session_state.redo_history = []
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌎")
@@ -117,11 +121,18 @@ else:
         # If not valid, set selected_option as an empty list
         selected_option = []
 
-col1, col2 = st.columns(2)
+# Preserve the previous state of the textbox content
+if 'previous_textbox_content' not in st.session_state:
+    st.session_state.previous_textbox_content = ""
+
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if st.button("➕ Add Population"):
+    if st.button("➕ Add"):
         if selected_option:
+            st.session_state.textbox_history.append(
+                st.session_state.textbox_content)
+            st.session_state.redo_history.clear()
             for pop in selected_option:
                 # Remove all text before the last ":"
                 parts = pop.split(':')
@@ -132,8 +143,27 @@ with col1:
             st.rerun()
 
 with col2:
-    if st.button("🧹 Clear Populations"):
+    if st.button("🧹 Clear"):
+        st.session_state.textbox_history.append(
+            st.session_state.textbox_content)
+        st.session_state.redo_history.clear()
         st.session_state.textbox_content = ""
+        st.rerun()
+
+with col3:
+    if st.button("↩️ Undo"):
+        if st.session_state.textbox_history:
+            st.session_state.redo_history.append(
+                st.session_state.textbox_content)
+            st.session_state.textbox_content = st.session_state.textbox_history.pop()
+        st.rerun()
+
+with col4:
+    if st.button("↪️ Redo"):
+        if st.session_state.redo_history:
+            st.session_state.textbox_history.append(
+                st.session_state.textbox_content)
+            st.session_state.textbox_content = st.session_state.redo_history.pop()
         st.rerun()
 
 # Display the Textbox with the entire selected options
