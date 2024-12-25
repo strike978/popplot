@@ -21,12 +21,12 @@ st.header('Pop:green[Plot]')
 
 # Define the available data files
 data_files = {
-    "Modern Era": "Modern Ancestry.txt",
-    "Mesolithic and Neolithic": "Mesolithic and Neolithic.txt",
+    "Modern Period": "Modern Ancestry.txt",
+    "Stone Age": "Mesolithic and Neolithic.txt",
     "Bronze Age": "Bronze Age.txt",
     "Iron Age": "Iron Age.txt",
     "Migration Period": "Migration Period.txt",
-    "Middle Ages": "Middle Ages.txt",
+    "Medieval Period": "Middle Ages.txt",
 }
 
 # Define a function to read data from a file with UTF-8 encoding
@@ -38,8 +38,8 @@ def read_data_file(file_path):
 
 
 # Create a multiselect checkbox to choose data files
-selected_files = st.multiselect("Time Period:", list(
-    data_files.keys()), default=["Modern Era"])
+selected_files = st.multiselect("Historical Period:", list(
+    data_files.keys()), default=["Modern Period"])
 
 # Read data from selected files
 selected_data = []
