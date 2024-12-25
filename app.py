@@ -125,29 +125,19 @@ else:
 if 'previous_textbox_content' not in st.session_state:
     st.session_state.previous_textbox_content = ""
 
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    if st.button("➕ Add"):
-        if selected_option:
-            st.session_state.textbox_history.append(
-                st.session_state.textbox_content)
-            st.session_state.redo_history.clear()
-            for pop in selected_option:
-                # Remove all text before the last ":"
-                parts = pop.split(':')
-                if len(parts) > 1:
-                    pop = parts[-1]
-                if pop not in st.session_state.textbox_content:
-                    st.session_state.textbox_content += "\n" + pop
-            st.rerun()
-
-with col2:
-    if st.button("🧹 Clear"):
+# Use a single column layout for the Add button
+if st.button("➕ Add"):
+    if selected_option:
         st.session_state.textbox_history.append(
             st.session_state.textbox_content)
         st.session_state.redo_history.clear()
-        st.session_state.textbox_content = ""
+        for pop in selected_option:
+            # Remove all text before the last ":"
+            parts = pop.split(':')
+            if len(parts) > 1:
+                pop = parts[-1]
+            if pop not in st.session_state.textbox_content:
+                st.session_state.textbox_content += "\n" + pop
         st.rerun()
 
 # Commenting out Undo and Redo buttons
@@ -170,6 +160,14 @@ with col2:
 # Display the Textbox with the entire selected options
 data_input = st.text_area('Enter data in PCA coordinates format:',
                           st.session_state.textbox_content.strip(), height=300, key='textbox_input')
+
+# Move Clear button below the text box
+if st.button("🧹 Clear"):
+    st.session_state.textbox_history.append(
+        st.session_state.textbox_content)
+    st.session_state.redo_history.clear()
+    st.session_state.textbox_content = ""
+    st.rerun()
 
 # Check if the Textbox content has changed manually and clear session state if it has
 if data_input != st.session_state.textbox_content.strip():
