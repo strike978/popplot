@@ -60,7 +60,7 @@ populations_in_textbox = [line.split(',')[1] if len(line.split(
 available_populations = [pop for pop in selected_data if pop.split(
     ',')[1] not in populations_in_textbox]
 
-group_pop_toggle = st.checkbox('Group Populations')
+group_pop_toggle = st.checkbox('Group by Population')
 
 # Group populations based on the word after the first ":" when the toggle is enabled
 grouped_populations = {}
