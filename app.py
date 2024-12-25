@@ -65,10 +65,14 @@ if group_pop_toggle:
         parts = pop.split(',')
         if len(parts) > 1:
             # Extract the part after the first ":"
-            key = parts[0].split(':')[1]
-            if key not in grouped_populations:
-                grouped_populations[key] = []
-            grouped_populations[key].append(pop)
+            key = parts[0].strip()
+            keys = [key.split(':')[0].strip(), key.split(
+                ':')[1].strip()] if ':' in key else [key]
+
+            for key in keys:
+                if key not in grouped_populations:
+                    grouped_populations[key] = []
+                grouped_populations[key].append(pop)
 
 # Preserve the selected index in session state
 if 'selected_option_index' not in st.session_state:
