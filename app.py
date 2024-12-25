@@ -58,13 +58,14 @@ available_populations = [pop for pop in selected_data if pop.split(
 
 group_pop_toggle = st.checkbox('Group Populations')
 
-# Group populations with the same word before the first ":" when toggle is enabled
+# Group populations based on the word after the first ":" when the toggle is enabled
 grouped_populations = {}
 if group_pop_toggle:
     for pop in available_populations:
         parts = pop.split(',')
         if len(parts) > 1:
-            key = parts[0].split(':')[0]  # Get the part before the first ":"
+            # Extract the part after the first ":"
+            key = parts[0].split(':')[1]
             if key not in grouped_populations:
                 grouped_populations[key] = []
             grouped_populations[key].append(pop)
