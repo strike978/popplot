@@ -158,7 +158,7 @@ if st.button("➕ Add"):
 #         st.rerun()
 
 # Display the Textbox with the entire selected options
-data_input = st.text_area('Enter data in PCA coordinates format:',
+data_input = st.text_area('Enter data in CSV format:', 
                           st.session_state.textbox_content.strip(), height=300, key='textbox_input')
 
 # Move Clear button below the text box
