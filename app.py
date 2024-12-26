@@ -17,7 +17,7 @@ if 'redo_history' not in st.session_state:
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌎")
-st.header('Pop:green[Plot]')
+st.title('Pop:green[Plot] 🌎')
 
 # Define the available data files
 data_files = {
