@@ -6,7 +6,6 @@ import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
 
-
 # Initialize session state attributes
 if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
@@ -53,40 +52,83 @@ for file in selected_files:
             content_after_comma_set.add(content_after_comma)
 
 # Get the populations already in the textbox
-populations_in_textbox = [line.split(',')[1] if len(line.split(
-    ',')) > 1 else '' for line in st.session_state.textbox_content.strip().split('\n')]
+populations_in_textbox = []
+for line in st.session_state.textbox_content.strip().split('\n'):
+    if line:  # Only process non-empty lines
+        parts = line.split(',')
+        if len(parts) > 1:
+            # Store the data part (everything after the first comma)
+            data_part = ','.join(parts[1:])
+            populations_in_textbox.append(data_part)
 
 # Create a filtered list of available populations based on content after the comma
-available_populations = [pop for pop in selected_data if pop.split(
-    ',')[1] not in populations_in_textbox]
+available_populations = []
+for pop in selected_data:
+    parts = pop.split(',')
+    if len(parts) > 1:
+        data_part = ','.join(parts[1:])
+        if data_part not in populations_in_textbox:
+            available_populations.append(pop)
 
 group_pop_toggle = st.checkbox('Group by Population')
 
 # Group populations based on the word after the first ":" when the toggle is enabled
 grouped_populations = {}
 if group_pop_toggle:
+    # First pass: collect all groups in order
+    population_options = []
+    seen_groups = set()
+
+    # First, populate groups with available populations only
+    for pop in available_populations:  # Changed from selected_data to available_populations
+        parts = pop.split(',')
+        if len(parts) > 1:
+            name_parts = parts[0].split(':')
+            if len(name_parts) > 1:
+                # Take only first two parts if they exist
+                for group in name_parts[:-1][:2]:
+                    group = group.strip()
+                    if group not in seen_groups:
+                        population_options.append(group)
+                        seen_groups.add(group)
+                        grouped_populations[group] = []
+            else:
+                # Handle single-part names
+                group = name_parts[0].strip()
+                if group not in seen_groups:
+                    population_options.append(group)
+                    seen_groups.add(group)
+                    grouped_populations[group] = []
+
+    # Second pass: populate the groups
     for pop in available_populations:
         parts = pop.split(',')
         if len(parts) > 1:
-            # Extract the part after the first ":"
-            key = parts[0].strip()
-            keys = [key.split(':')[0].strip(), key.split(
-                ':')[1].strip()] if ':' in key else [key]
+            name_parts = parts[0].split(':')
+            if len(name_parts) > 1:
+                # Add to first two groups if they exist
+                for group in name_parts[:-1][:2]:
+                    group = group.strip()
+                    if group in grouped_populations:
+                        grouped_populations[group].append(pop)
+            else:
+                # Handle single-part names
+                group = name_parts[0].strip()
+                if group in grouped_populations:
+                    grouped_populations[group].append(pop)
 
-            for key in keys:
-                if key not in grouped_populations:
-                    grouped_populations[key] = []
-                grouped_populations[key].append(pop)
+    # Remove empty groups and update population_options
+    non_empty_groups = [
+        group for group in population_options if grouped_populations[group]]
+    population_options = non_empty_groups
+    grouped_populations = {k: v for k, v in grouped_populations.items() if v}
+
+else:
+    population_options = available_populations
 
 # Preserve the selected index in session state
 if 'selected_option_index' not in st.session_state:
     st.session_state.selected_option_index = 0
-
-# Create a Selectbox to display populations based on the toggle
-if group_pop_toggle:
-    population_options = list(grouped_populations.keys())
-else:
-    population_options = available_populations
 
 # Ensure the selected index is within the valid range
 if st.session_state.selected_option_index is None or st.session_state.selected_option_index >= len(population_options):
@@ -95,7 +137,8 @@ if st.session_state.selected_option_index is None or st.session_state.selected_o
 selected_option_index = st.selectbox(
     "Populations:",
     range(len(population_options)),
-    format_func=lambda i: population_options[i].split(',')[0],
+    format_func=lambda i: population_options[i] if group_pop_toggle else population_options[i].split(',')[
+        0],
     key='population_selectbox',
     index=st.session_state.selected_option_index
 )
@@ -132,12 +175,24 @@ if st.button("➕ Add"):
             st.session_state.textbox_content)
         st.session_state.redo_history.clear()
         for pop in selected_option:
-            # Remove all text before the last ":"
-            parts = pop.split(':')
+            # Split by comma to separate population name from data
+            parts = pop.split(',')
             if len(parts) > 1:
-                pop = parts[-1]
-            if pop not in st.session_state.textbox_content:
-                st.session_state.textbox_content += "\n" + pop
+                # Get the last part after colon for the population name
+                name_parts = parts[0].split(':')
+                display_name = name_parts[-1].strip()
+                # Get the data part
+                data_part = ','.join(parts[1:])
+                # Combine the display name with the data
+                formatted_pop = display_name + ',' + data_part
+
+                # Check if this data is already in the textbox
+                existing_data = [line.split(',', 1)[1] if ',' in line else ''
+                                 for line in st.session_state.textbox_content.strip().split('\n')
+                                 if line.strip()]
+
+                if data_part not in existing_data:
+                    st.session_state.textbox_content += "\n" + formatted_pop.strip()
         st.rerun()
 
 # Commenting out Undo and Redo buttons
@@ -158,7 +213,7 @@ if st.button("➕ Add"):
 #         st.rerun()
 
 # Display the Textbox with the entire selected options
-data_input = st.text_area('Enter data in CSV format:', 
+data_input = st.text_area('Enter data in CSV format:',
                           st.session_state.textbox_content.strip(), height=300, key='textbox_input')
 
 # Move Clear button below the text box
