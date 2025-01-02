@@ -168,31 +168,43 @@ else:
 if 'previous_textbox_content' not in st.session_state:
     st.session_state.previous_textbox_content = ""
 
-# Use a single column layout for the Add button
-if st.button("➕ Add"):
-    if selected_option:
+# Create a row of buttons for Add and Clear
+# Make the first column smaller since Clear button is smaller
+col1, col2 = st.columns([1, 5])
+
+with col1:
+    if st.button("➕ Add"):
+        if selected_option:
+            st.session_state.textbox_history.append(
+                st.session_state.textbox_content)
+            st.session_state.redo_history.clear()
+            for pop in selected_option:
+                # Split by comma to separate population name from data
+                parts = pop.split(',')
+                if len(parts) > 1:
+                    # Get the last part after colon for the population name
+                    name_parts = parts[0].split(':')
+                    display_name = name_parts[-1].strip()
+                    # Get the data part
+                    data_part = ','.join(parts[1:])
+                    # Combine the display name with the data
+                    formatted_pop = display_name + ',' + data_part
+
+                    # Check if this data is already in the textbox
+                    existing_data = [line.split(',', 1)[1] if ',' in line else ''
+                                     for line in st.session_state.textbox_content.strip().split('\n')
+                                     if line.strip()]
+
+                    if data_part not in existing_data:
+                        st.session_state.textbox_content += "\n" + formatted_pop.strip()
+            st.rerun()
+
+with col2:
+    if st.button("🧹 Clear"):
         st.session_state.textbox_history.append(
             st.session_state.textbox_content)
         st.session_state.redo_history.clear()
-        for pop in selected_option:
-            # Split by comma to separate population name from data
-            parts = pop.split(',')
-            if len(parts) > 1:
-                # Get the last part after colon for the population name
-                name_parts = parts[0].split(':')
-                display_name = name_parts[-1].strip()
-                # Get the data part
-                data_part = ','.join(parts[1:])
-                # Combine the display name with the data
-                formatted_pop = display_name + ',' + data_part
-
-                # Check if this data is already in the textbox
-                existing_data = [line.split(',', 1)[1] if ',' in line else ''
-                                 for line in st.session_state.textbox_content.strip().split('\n')
-                                 if line.strip()]
-
-                if data_part not in existing_data:
-                    st.session_state.textbox_content += "\n" + formatted_pop.strip()
+        st.session_state.textbox_content = ""
         st.rerun()
 
 # Commenting out Undo and Redo buttons
@@ -216,24 +228,22 @@ if st.button("➕ Add"):
 data_input = st.text_area('Enter data in CSV format:',
                           st.session_state.textbox_content.strip(), height=300, key='textbox_input')
 
-# Move Clear button below the text box
-if st.button("🧹 Clear"):
-    st.session_state.textbox_history.append(
-        st.session_state.textbox_content)
-    st.session_state.redo_history.clear()
-    st.session_state.textbox_content = ""
-    st.rerun()
-
 # Check if the Textbox content has changed manually and clear session state if it has
 if data_input != st.session_state.textbox_content.strip():
     st.session_state.textbox_content = data_input.strip()
     st.rerun()
 
-# Create tabs for different plots
-tab1, tab2 = st.tabs(
-    ["🌳 Tree", "📈 PCA"])
+# Add buttons for plotting
+col1, col2 = st.columns([1, 5])
 
-with tab1:
+with col1:
+    plot_tree = st.button("🌳 Plot Tree")
+
+with col2:
+    plot_pca = st.button("📈 Plot PCA")
+
+# Replace the tab1 content with tree button condition
+if plot_tree:
     with st.spinner("Creating Tree..."):
         if data_input:
             # Remove leading/trailing whitespace and empty lines
@@ -273,7 +283,7 @@ with tab1:
                 st.caption(
                     'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
                 st.plotly_chart(fig, theme=None, use_container_width=True, config={
-                                'displayModeBar': True})
+                    'displayModeBar': True})
             else:
                 st.warning(
                     "Please add at least 3 populations before plotting.", icon="⚠️")
@@ -281,7 +291,8 @@ with tab1:
             st.warning(
                 "Please add at least 3 populations before plotting.", icon="⚠️")
 
-with tab2:
+# Replace the tab2 content with PCA button condition
+if plot_pca:
     with st.spinner("Creating PCA Plot..."):
         if data_input:
             # Remove leading/trailing whitespace and empty lines
