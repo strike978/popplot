@@ -1,18 +1,27 @@
-from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.cluster.hierarchy import linkage
+from scipy.spatial.distance import pdist
 import streamlit as st
 import pandas as pd
 import io
 import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
+import numpy as np
+from sklearn.manifold import Isomap
 
-# Initialize session state attributes
+# Keep only these session state initializations
 if 'textbox_content' not in st.session_state:
     st.session_state.textbox_content = ""
 if 'textbox_history' not in st.session_state:
     st.session_state.textbox_history = []
 if 'redo_history' not in st.session_state:
     st.session_state.redo_history = []
+if 'decomposition_method' not in st.session_state:
+    st.session_state.decomposition_method = "PCA"
+
+# Keep only these constants:
+LINKAGE_METHOD = "ward"
+DISTANCE_METRIC = "euclidean"
 
 # Setting the layout of the page to wide and the title of the page to PopPlot
 st.set_page_config(layout="wide", page_title="PopPlot", page_icon="🌎")
@@ -234,109 +243,162 @@ if data_input != st.session_state.textbox_content.strip():
     st.rerun()
 
 # Add buttons for plotting
-col1, col2 = st.columns([1, 5])
+col1, col2, col3 = st.columns([1, 1, 4])
 
 with col1:
     plot_tree = st.button("🌳 Plot Tree")
 
 with col2:
-    plot_pca = st.button("📈 Plot PCA")
+    plot_scatter = st.button("📈 Plot Scatter")
 
-# Replace the tab1 content with tree button condition
+with col3:
+    # Keep only the decomposition method selector for scatter plots
+    decomposition_method = st.selectbox(
+        "Dimensionality Reduction:",
+        ["PCA", "Isomap"],
+        help="""
+        PCA: Principal Component Analysis - Linear dimensionality reduction
+        Isomap: Isometric Mapping - Non-linear, preserves geodesic distances
+        """,
+        key='decomposition_method'
+    )
+
+# Modify the tree plotting section to include error handling
 if plot_tree:
     with st.spinner("Creating Tree..."):
         if data_input:
-            # Remove leading/trailing whitespace and empty lines
-            cleaned_data_input = "\n".join(
-                line.strip() for line in data_input.splitlines() if line.strip())
+            try:
+                # Remove leading/trailing whitespace and empty lines
+                cleaned_data_input = "\n".join(
+                    line.strip() for line in data_input.splitlines() if line.strip())
 
-            # Read the data and select all columns except the first one (which contains population labels)
-            data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None).iloc[:, 1:]
-            populations = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0])[0]
+                # Read the data and select all columns except the first one (which contains population labels)
+                data = pd.read_csv(io.StringIO(
+                    cleaned_data_input), header=None).iloc[:, 1:]
+                populations = pd.read_csv(io.StringIO(
+                    cleaned_data_input), header=None, usecols=[0])[0]
 
-            # Check if data is not empty and there are at least 3 populations
-            if not data.empty and len(populations) >= 3:
-                labels = [i for i in populations]
-                height = max(20 * len(populations), 500)
+                # Check if data is not empty and there are at least 3 populations
+                if not data.empty and len(populations) >= 3:
+                    labels = [i for i in populations]
+                    height = max(20 * len(populations), 500)
 
-                # Create the dendrogram using hierarchical clustering
-                fig = ff.create_dendrogram(
-                    data,
-                    orientation="right",
-                    labels=labels,
-                    linkagefun=lambda x: linkage(x, method="ward"),
-                )
+                    # Convert data to float type to ensure numerical operations work
+                    data_array = data.astype(float).values
 
-                # Update the layout of the dendrogram
-                fig.update_layout(
-                    height=height,
-                    yaxis={'side': 'right'}
-                )
-                fig.update_yaxes(
-                    automargin=True,
-                    range=[0, len(populations)*10]
-                )
+                    # Calculate distances using euclidean metric (required for Ward's method)
+                    distances = pdist(data_array, metric=DISTANCE_METRIC)
 
-                # Add a caption and display the dendrogram
-                st.caption(
-                    'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
-                st.plotly_chart(fig, theme=None, use_container_width=True, config={
-                    'displayModeBar': True})
-            else:
-                st.warning(
-                    "Please add at least 3 populations before plotting.", icon="⚠️")
+                    # Create linkage matrix using Ward's method
+                    linkage_matrix = linkage(
+                        distances,
+                        method=LINKAGE_METHOD
+                    )
+
+                    # Create dendrogram
+                    fig = ff.create_dendrogram(
+                        data_array,
+                        orientation="right",
+                        labels=labels,
+                        distfun=lambda x: distances,
+                        linkagefun=lambda x: linkage_matrix
+                    )
+
+                    # Update the layout and add captions
+                    fig.update_layout(
+                        height=height,
+                        yaxis={'side': 'right'}
+                    )
+                    fig.update_yaxes(
+                        automargin=True,
+                        range=[0, len(populations)*10]
+                    )
+
+                    st.caption(
+                        "Using Ward's method with Euclidean distance for optimal clustering")
+                    st.caption(
+                        'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
+
+                    st.plotly_chart(fig, theme=None, use_container_width=True, config={
+                        'displayModeBar': True})
+                else:
+                    st.warning(
+                        "Please add at least 3 populations before plotting.", icon="⚠️")
+            except ValueError as e:
+                st.error(f"Error creating dendrogram: {str(e)}")
+                st.info(
+                    "Try a different combination of clustering method and distance metric.")
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {str(e)}")
         else:
             st.warning(
                 "Please add at least 3 populations before plotting.", icon="⚠️")
 
 # Replace the tab2 content with PCA button condition
-if plot_pca:
-    with st.spinner("Creating PCA Plot..."):
+if plot_scatter:
+    with st.spinner(f"Creating {decomposition_method} Plot..."):
         if data_input:
-            # Remove leading/trailing whitespace and empty lines
-            cleaned_data_input = "\n".join(
-                line.strip() for line in data_input.splitlines() if line.strip())
+            try:
+                # Data preparation (same as before)
+                cleaned_data_input = "\n".join(
+                    line.strip() for line in data_input.splitlines() if line.strip())
+                data = pd.read_csv(io.StringIO(
+                    cleaned_data_input), header=None).iloc[:, 1:]
+                populations = pd.read_csv(io.StringIO(
+                    cleaned_data_input), header=None, usecols=[0])[0]
 
-            # Read the data and select all columns except the first one (which contains population labels)
-            data = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None).iloc[:, 1:]
+                if not data.empty and len(populations) >= 3:
+                    # Initialize the selected decomposition method
+                    if decomposition_method == "PCA":
+                        model = PCA(n_components=2)
+                    else:  # Isomap
+                        model = Isomap(n_components=2)
 
-            populations = pd.read_csv(io.StringIO(
-                cleaned_data_input), header=None, usecols=[0])[0]
+                    # Perform dimensionality reduction
+                    result = model.fit_transform(data)
 
-            if not data.empty and len(populations) >= 3:
-                # Perform PCA with all columns
-                pca = PCA(n_components=2)
-                pca_result = pca.fit_transform(data)
+                    # Create DataFrame for plotting
+                    plot_df = pd.DataFrame(
+                        data=result,
+                        columns=[f'{decomposition_method}1',
+                                 f'{decomposition_method}2']
+                    )
+                    plot_df['Populations'] = populations
 
-                # Create a DataFrame for the PCA results
-                pca_df = pd.DataFrame(
-                    data=pca_result, columns=['PCA1', 'PCA2'])
+                    # Create scatter plot
+                    fig = px.scatter(
+                        plot_df,
+                        x=f'{decomposition_method}1',
+                        y=f'{decomposition_method}2',
+                        color='Populations',
+                        title='',
+                        text='Populations'
+                    )
 
-                # Add the population labels back to the PCA DataFrame
-                pca_df['Populations'] = populations
+                    # Customize plot
+                    fig.update_traces(
+                        textposition='top center',
+                        hovertemplate='%{text}'
+                    )
+                    fig.update_layout(
+                        legend_title_text='Populations',
+                        xaxis_title="",
+                        yaxis_title=""
+                    )
 
-                # Create a 2D scatter plot with labels
-                fig = px.scatter(pca_df, x='PCA1', y='PCA2', color='Populations',
-                                 title='', text='Populations')
+                    # Add method-specific explanations
+                    method_explanations = {
+                        "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
+                        "Isomap": "Isomap estimates the geodesic distances between points along a manifold."
+                    }
 
-                # Customize hover text to show only the label (population name)
-                fig.update_traces(textposition='top center',
-                                  hovertemplate='%{text}')
+                    st.caption(method_explanations[decomposition_method])
+                    st.plotly_chart(fig, use_container_width=True,
+                                    config={'displayModeBar': True})
 
-                # Change the legend title to "Populations"
-                fig.update_layout(legend_title_text='Populations')
-                # Remove the axis labels
-                fig.update_xaxes(title_text='')
-                fig.update_yaxes(title_text='')
-
-                st.plotly_chart(fig, use_container_width=True,
-                                config={'displayModeBar': True})
-            else:
-                st.warning(
-                    "Please add at least 3 populations before plotting.", icon="⚠️")
+            except Exception as e:
+                st.error(f"Error creating plot: {str(e)}")
+                st.info("Try a different decomposition method or check your data.")
         else:
             st.warning(
                 "Please add at least 3 populations before plotting.", icon="⚠️")
