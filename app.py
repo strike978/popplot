@@ -135,43 +135,47 @@ if group_pop_toggle:
 else:
     population_options = available_populations
 
-# Preserve the selected index in session state
-if 'selected_option_index' not in st.session_state:
-    st.session_state.selected_option_index = 0
+# Initialize session state for indices and callback
+if 'last_group_index' not in st.session_state:
+    st.session_state.last_group_index = 0
+if 'last_individual_index' not in st.session_state:
+    st.session_state.last_individual_index = 0
+if 'selectbox_changed' not in st.session_state:
+    st.session_state.selectbox_changed = False
 
-# Ensure the selected index is within the valid range
-if st.session_state.selected_option_index is None or st.session_state.selected_option_index >= len(population_options):
-    st.session_state.selected_option_index = 0
+# Define callback function for selectbox
 
-selected_option_index = st.selectbox(
+
+def on_selectbox_change():
+    st.session_state.selectbox_changed = True
+    current_index = population_options.index(
+        st.session_state.population_selectbox)
+    if group_pop_toggle:
+        st.session_state.last_group_index = current_index
+    else:
+        st.session_state.last_individual_index = current_index
+
+
+# Use the appropriate stored index based on toggle state
+default_index = st.session_state.last_group_index if group_pop_toggle else st.session_state.last_individual_index
+default_index = min(default_index, len(
+    population_options) - 1) if population_options else 0
+
+# Modify the selectbox to use callback
+selected_option = st.selectbox(
     "Populations:",
-    range(len(population_options)),
-    format_func=lambda i: population_options[i] if group_pop_toggle else population_options[i].split(',')[
-        0],
+    population_options,
+    format_func=lambda x: x.split(',')[0] if not group_pop_toggle else x,
     key='population_selectbox',
-    index=st.session_state.selected_option_index
+    index=default_index,
+    on_change=on_selectbox_change
 )
 
-# Update the session state with the selected index
-st.session_state.selected_option_index = selected_option_index
-
-# Check if grouping of populations is enabled
+# Modify the selection logic
 if group_pop_toggle:
-    # Check if a valid index is selected and within the range of population_options
-    if selected_option_index is not None and selected_option_index < len(population_options):
-        # If valid, select the corresponding grouped populations
-        selected_option = grouped_populations[population_options[selected_option_index]]
-    else:
-        # If not valid, set selected_option as an empty list
-        selected_option = []
+    selected_populations = grouped_populations[selected_option]
 else:
-    # If grouping is not enabled, check if a valid index is selected
-    if selected_option_index is not None:
-        # If valid, select the corresponding population option as a list
-        selected_option = [population_options[selected_option_index]]
-    else:
-        # If not valid, set selected_option as an empty list
-        selected_option = []
+    selected_populations = [selected_option]
 
 # Preserve the previous state of the textbox content
 if 'previous_textbox_content' not in st.session_state:
@@ -183,11 +187,11 @@ col1, col2 = st.columns([1, 5])
 
 with col1:
     if st.button("➕ Add"):
-        if selected_option:
+        if selected_populations:
             st.session_state.textbox_history.append(
                 st.session_state.textbox_content)
             st.session_state.redo_history.clear()
-            for pop in selected_option:
+            for pop in selected_populations:
                 # Split by comma to separate population name from data
                 parts = pop.split(',')
                 if len(parts) > 1:
@@ -206,6 +210,16 @@ with col1:
 
                     if data_part not in existing_data:
                         st.session_state.textbox_content += "\n" + formatted_pop.strip()
+
+            # Get current index before calculating next
+            current_index = population_options.index(selected_option)
+            next_index = (current_index + 1) % len(population_options)
+            if group_pop_toggle:
+                st.session_state.last_group_index = next_index
+            else:
+                st.session_state.last_individual_index = next_index
+
+            st.session_state.selectbox_changed = False
             st.rerun()
 
 with col2:
