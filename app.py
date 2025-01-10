@@ -5,9 +5,9 @@ import pandas as pd
 import io
 import plotly.figure_factory as ff
 import plotly.express as px
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, FastICA
+from sklearn.manifold import TSNE
 import numpy as np
-from sklearn.manifold import Isomap
 
 # Keep only these session state initializations
 if 'textbox_content' not in st.session_state:
@@ -255,10 +255,17 @@ with col3:
     # Keep only the decomposition method selector for scatter plots
     decomposition_method = st.selectbox(
         "Dimensionality Reduction:",
-        ["PCA", "Isomap"],
+        [
+            "PCA",
+            "t-SNE (Optimized)",
+            "t-SNE (Classic)",
+            "ICA"
+        ],
         help="""
-        PCA: Principal Component Analysis - Linear dimensionality reduction
-        Isomap: Isometric Mapping - Non-linear, preserves geodesic distances
+        PCA: Principal Component Analysis - Standard linear dimensionality reduction
+        t-SNE (Optimized): Barnes-Hut t-SNE implementation - efficient for larger datasets
+        t-SNE (Classic): Original t-SNE implementation - best precision for smaller datasets
+        ICA: Independent Component Analysis - For finding independent patterns
         """,
         key='decomposition_method'
     )
@@ -348,14 +355,35 @@ if plot_scatter:
                     cleaned_data_input), header=None, usecols=[0])[0]
 
                 if not data.empty and len(populations) >= 3:
-                    # Initialize the selected decomposition method
+                    # Update model initialization
                     if decomposition_method == "PCA":
-                        model = PCA(n_components=2)
-                    else:  # Isomap
-                        model = Isomap(n_components=2)
+                        model = PCA(n_components=2, random_state=42)
+                    elif decomposition_method == "t-SNE (Optimized)":
+                        model = TSNE(
+                            n_components=2,
+                            method='barnes_hut',
+                            random_state=42,
+                            perplexity=min(30, len(populations)-1),
+                            n_jobs=-1
+                        )
+                    elif decomposition_method == "t-SNE (Classic)":
+                        model = TSNE(
+                            n_components=2,
+                            method='exact',
+                            random_state=42,
+                            perplexity=min(30, len(populations)-1),
+                            n_jobs=-1
+                        )
+                    else:  # ICA
+                        model = FastICA(
+                            n_components=2,
+                            random_state=42,
+                            max_iter=1000,
+                            tol=0.01
+                        )
 
                     # Perform dimensionality reduction
-                    result = model.fit_transform(data)
+                    result = model.fit_transform(data.astype(float).values)
 
                     # Create DataFrame for plotting
                     plot_df = pd.DataFrame(
@@ -389,7 +417,9 @@ if plot_scatter:
                     # Add method-specific explanations
                     method_explanations = {
                         "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "Isomap": "Isomap estimates the geodesic distances between points along a manifold."
+                        "t-SNE (Optimized)": "Efficient t-SNE implementation that preserves data structure using Barnes-Hut algorithm.",
+                        "t-SNE (Classic)": "Classic t-SNE implementation that provides maximum precision.",
+                        "ICA": "Independent Component Analysis separates independent genetic components."
                     }
 
                     st.caption(method_explanations[decomposition_method])
