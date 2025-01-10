@@ -268,17 +268,15 @@ with col2:
 with col3:
     # Keep only the decomposition method selector for scatter plots
     decomposition_method = st.selectbox(
-        "Dimensionality Reduction:",
+        "Scatter Plot Method:",
         [
             "PCA",
-            "t-SNE (Optimized)",
-            "t-SNE (Classic)",
+            "t-SNE",
             "ICA"
         ],
         help="""
         PCA: Principal Component Analysis - Standard linear dimensionality reduction
-        t-SNE (Optimized): Barnes-Hut t-SNE implementation - efficient for larger datasets
-        t-SNE (Classic): Original t-SNE implementation - best precision for smaller datasets
+        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters and patterns
         ICA: Independent Component Analysis - For finding independent patterns
         """,
         key='decomposition_method'
@@ -372,15 +370,7 @@ if plot_scatter:
                     # Update model initialization
                     if decomposition_method == "PCA":
                         model = PCA(n_components=2, random_state=42)
-                    elif decomposition_method == "t-SNE (Optimized)":
-                        model = TSNE(
-                            n_components=2,
-                            method='barnes_hut',
-                            random_state=42,
-                            perplexity=min(30, len(populations)-1),
-                            n_jobs=-1
-                        )
-                    elif decomposition_method == "t-SNE (Classic)":
+                    elif decomposition_method == "t-SNE":
                         model = TSNE(
                             n_components=2,
                             method='exact',
@@ -431,8 +421,7 @@ if plot_scatter:
                     # Add method-specific explanations
                     method_explanations = {
                         "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "t-SNE (Optimized)": "Efficient t-SNE implementation that preserves data structure using Barnes-Hut algorithm.",
-                        "t-SNE (Classic)": "Classic t-SNE implementation that provides maximum precision.",
+                        "t-SNE": "t-SNE visualizes high-dimensional data by emphasizing local structure and clusters.",
                         "ICA": "Independent Component Analysis separates independent genetic components."
                     }
 
