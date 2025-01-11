@@ -266,18 +266,16 @@ with col2:
     plot_scatter = st.button("📈 Plot Scatter")
 
 with col3:
-    # Keep only the decomposition method selector for scatter plots
+    # Update the decomposition method selector
     decomposition_method = st.selectbox(
         "Scatter Plot Method:",
         [
             "PCA",
-            "t-SNE",
-            "ICA"
+            "t-SNE"    # Using exact t-SNE implementation
         ],
         help="""
         PCA: Principal Component Analysis - Standard linear dimensionality reduction
-        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters and patterns
-        ICA: Independent Component Analysis - For finding independent patterns
+        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing population clusters
         """,
         key='decomposition_method'
     )
@@ -370,20 +368,13 @@ if plot_scatter:
                     # Update model initialization
                     if decomposition_method == "PCA":
                         model = PCA(n_components=2, random_state=42)
-                    elif decomposition_method == "t-SNE":
+                    else:  # t-SNE
                         model = TSNE(
                             n_components=2,
                             method='exact',
                             random_state=42,
                             perplexity=min(30, len(populations)-1),
                             n_jobs=-1
-                        )
-                    else:  # ICA
-                        model = FastICA(
-                            n_components=2,
-                            random_state=42,
-                            max_iter=1000,
-                            tol=0.01
                         )
 
                     # Perform dimensionality reduction
@@ -418,11 +409,10 @@ if plot_scatter:
                         yaxis_title=""
                     )
 
-                    # Add method-specific explanations
+                    # Update method explanations
                     method_explanations = {
                         "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "t-SNE": "t-SNE visualizes high-dimensional data by emphasizing local structure and clusters.",
-                        "ICA": "Independent Component Analysis separates independent genetic components."
+                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data."
                     }
 
                     st.caption(method_explanations[decomposition_method])
