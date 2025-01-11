@@ -298,13 +298,10 @@ plot_type = st.radio(
 )
 
 if plot_type == "Scatter Plot":
-    method = st.selectbox(
+    method = st.radio(
         "Scatter Plot Method:",
-        [
-            "PCA",
-            "t-SNE",
-            "MDS"
-        ],
+        ["PCA", "t-SNE", "MDS"],
+        horizontal=True,
         help="""
         PCA: Principal Component Analysis - Standard linear dimensionality reduction
         t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters
@@ -344,8 +341,8 @@ if plot_button and plot_type == "Scatter Plot":
                     elif method == "t-SNE":
                         model = TSNE(
                             n_components=2,
-                            method='exact',
-                            perplexity=min(30, len(populations)-1)
+                            perplexity=min(30, len(populations)-1),
+                            method='exact'  # For better accuracy with small datasets
                         )
                     else:  # MDS
                         model = MDS(n_components=2)
