@@ -250,19 +250,31 @@ with col2:
 # Add this function near the top of the file, after the imports
 
 
-def parse_input_data(data_input, delimiter=None):
-    """Parse input data detecting the delimiter if not specified."""
-    if not delimiter:
-        # Auto-detect delimiter by checking first non-empty line
-        for line in data_input.splitlines():
-            if line.strip():
-                if '\t' in line:
-                    delimiter = '\t'
-                else:
-                    delimiter = ','
-                break
+def parse_input_data(data_input):
+    """Parse input data with mixed CSV/TSV formats."""
+    parsed_lines = []
+    for line in data_input.splitlines():
+        if line.strip():
+            # Count tabs and commas in the line
+            tab_count = line.count('\t')
+            comma_count = line.count(',')
 
-    return delimiter
+            # Determine which delimiter splits the line into more fields
+            if tab_count > comma_count:
+                delimiter = '\t'
+            else:
+                delimiter = ','
+
+            # Split the line and clean the fields
+            fields = [field.strip() for field in line.split(delimiter)]
+            parsed_lines.append(fields)
+
+    # Convert to DataFrame
+    if parsed_lines:
+        df = pd.DataFrame(parsed_lines)
+        # First column is population names, rest is data
+        return df.iloc[:, 0], df.iloc[:, 1:].astype(float)
+    return pd.Series(), pd.DataFrame()
 
 
 # Display the Textbox with the entire selected options
@@ -276,29 +288,30 @@ if data_input != st.session_state.textbox_content.strip():
     st.session_state.textbox_content = data_input.strip()
     st.rerun()
 
-# Add buttons for plotting
-col1, col2, col3 = st.columns([1, 1, 4])
+# Move the decomposition method selector above the plot buttons
+decomposition_method = st.selectbox(
+    "Scatter Plot Method:",
+    [
+        "PCA",
+        "t-SNE",
+        "LSQ"
+    ],
+    help="""
+    PCA: Principal Component Analysis - Standard linear dimensionality reduction
+    t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing population clusters
+    LSQ: Least Squares/ICA - Finds independent components in genetic data
+    """,
+    key='decomposition_method'
+)
+
+# Then create the button columns
+col1, col2 = st.columns([1, 1])
 
 with col1:
     plot_tree = st.button("🌳 Plot Tree")
 
 with col2:
     plot_scatter = st.button("📈 Plot Scatter")
-
-with col3:
-    # Update the decomposition method selector
-    decomposition_method = st.selectbox(
-        "Scatter Plot Method:",
-        [
-            "PCA",
-            "t-SNE"    # Using exact t-SNE implementation
-        ],
-        help="""
-        PCA: Principal Component Analysis - Standard linear dimensionality reduction
-        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing population clusters
-        """,
-        key='decomposition_method'
-    )
 
 # Modify the tree plotting section to include error handling
 if plot_tree:
@@ -309,15 +322,8 @@ if plot_tree:
                 cleaned_data_input = "\n".join(
                     line.strip() for line in data_input.splitlines() if line.strip())
 
-                # Detect delimiter and read data
-                delimiter = parse_input_data(cleaned_data_input)
-                data = pd.read_csv(io.StringIO(cleaned_data_input),
-                                   header=None,
-                                   delimiter=delimiter).iloc[:, 1:]
-                populations = pd.read_csv(io.StringIO(cleaned_data_input),
-                                          header=None,
-                                          delimiter=delimiter,
-                                          usecols=[0])[0]
+                # Parse mixed format data
+                populations, data = parse_input_data(cleaned_data_input)
 
                 # Check if data is not empty and there are at least 3 populations
                 if not data.empty and len(populations) >= 3:
@@ -325,7 +331,7 @@ if plot_tree:
                     height = max(20 * len(populations), 500)
 
                     # Convert data to float type to ensure numerical operations work
-                    data_array = data.astype(float).values
+                    data_array = data.values
 
                     # Calculate distances using euclidean metric (required for Ward's method)
                     distances = pdist(data_array, metric=DISTANCE_METRIC)
@@ -388,21 +394,17 @@ if plot_scatter:
                 cleaned_data_input = "\n".join(
                     line.strip() for line in data_input.splitlines() if line.strip())
 
-                # Detect delimiter and read data
-                delimiter = parse_input_data(cleaned_data_input)
-                data = pd.read_csv(io.StringIO(cleaned_data_input),
-                                   header=None,
-                                   delimiter=delimiter).iloc[:, 1:]
-                populations = pd.read_csv(io.StringIO(cleaned_data_input),
-                                          header=None,
-                                          delimiter=delimiter,
-                                          usecols=[0])[0]
+                # Parse mixed format data
+                populations, data = parse_input_data(cleaned_data_input)
 
                 # Check population count
                 if not data.empty and len(populations) >= 3:
                     # Update model initialization
                     if decomposition_method == "PCA":
                         model = PCA(n_components=2, random_state=42)
+                    elif decomposition_method == "LSQ":
+                        model = FastICA(
+                            n_components=2, random_state=42, max_iter=1000)
                     else:  # t-SNE
                         model = TSNE(
                             n_components=2,
@@ -413,7 +415,7 @@ if plot_scatter:
                         )
 
                     # Perform dimensionality reduction
-                    result = model.fit_transform(data.astype(float).values)
+                    result = model.fit_transform(data.values)
 
                     # Create DataFrame for plotting
                     plot_df = pd.DataFrame(
@@ -447,7 +449,8 @@ if plot_scatter:
                     # Update method explanations
                     method_explanations = {
                         "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data."
+                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data.",
+                        "LSQ": "Least Squares/ICA finds independent components in genetic data, highlighting unique ancestral contributions."
                     }
 
                     st.caption(method_explanations[decomposition_method])
