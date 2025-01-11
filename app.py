@@ -8,6 +8,9 @@ import plotly.express as px
 from sklearn.decomposition import PCA, FastICA
 from sklearn.manifold import TSNE
 import numpy as np
+import torch
+import torch.nn as nn
+from sklearn.preprocessing import StandardScaler
 
 # Keep only these session state initializations
 if 'textbox_content' not in st.session_state:
@@ -288,33 +291,133 @@ if data_input != st.session_state.textbox_content.strip():
     st.session_state.textbox_content = data_input.strip()
     st.rerun()
 
-# Move the decomposition method selector above the plot buttons
-decomposition_method = st.selectbox(
-    "Scatter Plot Method:",
-    [
-        "PCA",
-        "t-SNE",
-        "LSQ"
-    ],
-    help="""
-    PCA: Principal Component Analysis - Standard linear dimensionality reduction
-    t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing population clusters
-    LSQ: Least Squares/ICA - Finds independent components in genetic data
-    """,
-    key='decomposition_method'
+# Replace the decomposition method selector with this new organization
+
+plot_type = st.radio(
+    "Plot Type:",
+    ["Tree Plot", "Scatter Plot"],
+    horizontal=True,
+    help="Choose between hierarchical clustering tree or dimensionality reduction scatter plot"
 )
 
-# Then create the button columns
-col1, col2 = st.columns([1, 1])
+if plot_type == "Scatter Plot":
+    method = st.selectbox(
+        "Scatter Plot Method:",
+        [
+            "PCA",
+            "t-SNE",
+            "MDS",
+            "Gaussian Random Projection"
+        ],
+        help="""
+        PCA: Principal Component Analysis - Standard linear dimensionality reduction
+        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters
+        MDS: Multidimensional Scaling - Preserves distances between points
+        Gaussian Random Projection: Random projection using Gaussian random matrix
+        """
+    )
 
-with col1:
-    plot_tree = st.button("🌳 Plot Tree")
+    st.session_state.decomposition_method = method
 
-with col2:
-    plot_scatter = st.button("📈 Plot Scatter")
+# Update the plotting buttons
+if plot_type == "Tree Plot":
+    plot_button = st.button("🌳 Plot")
+else:
+    plot_button = st.button("📈 Plot")
 
-# Modify the tree plotting section to include error handling
-if plot_tree:
+# Simplify the model initialization section to only include these 5 methods
+if plot_button and plot_type == "Scatter Plot":
+    # Check for data first, before creating spinner
+    if not data_input:
+        st.warning(
+            "Please add at least 3 populations before plotting.", icon="⚠️")
+    else:
+        with st.spinner(f"Creating {method} Plot..."):
+            try:
+                # Data preparation
+                cleaned_data_input = "\n".join(
+                    line.strip() for line in data_input.splitlines() if line.strip())
+
+                # Parse mixed format data
+                populations, data = parse_input_data(cleaned_data_input)
+
+                # Check population count
+                if not data.empty and len(populations) >= 3:
+                    # Update model initialization based on selected method
+                    if method == "PCA":
+                        model = PCA(n_components=2, random_state=42)
+                    elif method == "t-SNE":
+                        model = TSNE(
+                            n_components=2,
+                            method='exact',
+                            random_state=42,
+                            perplexity=min(30, len(populations)-1),
+                            n_jobs=-1
+                        )
+                    elif method == "MDS":
+                        from sklearn.manifold import MDS
+                        model = MDS(n_components=2, random_state=42)
+                    else:  # Gaussian Random Projection
+                        from sklearn.random_projection import GaussianRandomProjection
+                        model = GaussianRandomProjection(
+                            n_components=2,
+                            random_state=42
+                        )
+
+                    # Perform dimensionality reduction
+                    result = model.fit_transform(data.values)
+
+                    # Create DataFrame for plotting
+                    plot_df = pd.DataFrame(
+                        data=result,
+                        columns=[f'{method}1',
+                                 f'{method}2']
+                    )
+                    plot_df['Populations'] = populations
+
+                    # Create scatter plot
+                    fig = px.scatter(
+                        plot_df,
+                        x=f'{method}1',
+                        y=f'{method}2',
+                        color='Populations',
+                        title='',
+                        text='Populations'
+                    )
+
+                    # Customize plot
+                    fig.update_traces(
+                        textposition='top center',
+                        hovertemplate='%{text}'
+                    )
+                    fig.update_layout(
+                        legend_title_text='Populations',
+                        xaxis_title="",
+                        yaxis_title=""
+                    )
+
+                    # Update method explanations
+                    method_explanations = {
+                        "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
+                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data.",
+                        "MDS": "Multidimensional Scaling preserves the pairwise distances between populations.",
+                        "Gaussian Random Projection": "Projects data using a random Gaussian matrix for efficient dimensionality reduction."
+                    }
+
+                    st.caption(method_explanations[method])
+                    st.plotly_chart(fig, use_container_width=True,
+                                    config={'displayModeBar': True})
+
+                else:
+                    st.warning(
+                        "Please add at least 3 populations before plotting.", icon="⚠️")
+
+            except Exception as e:
+                st.error(f"Error creating plot: {str(e)}")
+                st.info("Try a different method or check your data.")
+
+# Add back the tree plotting code
+if plot_button and plot_type == "Tree Plot":
     with st.spinner("Creating Tree..."):
         if data_input:
             try:
@@ -380,87 +483,3 @@ if plot_tree:
         else:
             st.warning(
                 "Please add at least 3 populations before plotting.", icon="⚠️")
-
-# Replace the tab2 content with PCA button condition
-if plot_scatter:
-    # Check for data first, before creating spinner
-    if not data_input:
-        st.warning(
-            "Please add at least 3 populations before plotting.", icon="⚠️")
-    else:
-        with st.spinner(f"Creating {decomposition_method} Plot..."):
-            try:
-                # Data preparation
-                cleaned_data_input = "\n".join(
-                    line.strip() for line in data_input.splitlines() if line.strip())
-
-                # Parse mixed format data
-                populations, data = parse_input_data(cleaned_data_input)
-
-                # Check population count
-                if not data.empty and len(populations) >= 3:
-                    # Update model initialization
-                    if decomposition_method == "PCA":
-                        model = PCA(n_components=2, random_state=42)
-                    elif decomposition_method == "LSQ":
-                        model = FastICA(
-                            n_components=2, random_state=42, max_iter=1000)
-                    else:  # t-SNE
-                        model = TSNE(
-                            n_components=2,
-                            method='exact',
-                            random_state=42,
-                            perplexity=min(30, len(populations)-1),
-                            n_jobs=-1
-                        )
-
-                    # Perform dimensionality reduction
-                    result = model.fit_transform(data.values)
-
-                    # Create DataFrame for plotting
-                    plot_df = pd.DataFrame(
-                        data=result,
-                        columns=[f'{decomposition_method}1',
-                                 f'{decomposition_method}2']
-                    )
-                    plot_df['Populations'] = populations
-
-                    # Create scatter plot
-                    fig = px.scatter(
-                        plot_df,
-                        x=f'{decomposition_method}1',
-                        y=f'{decomposition_method}2',
-                        color='Populations',
-                        title='',
-                        text='Populations'
-                    )
-
-                    # Customize plot
-                    fig.update_traces(
-                        textposition='top center',
-                        hovertemplate='%{text}'
-                    )
-                    fig.update_layout(
-                        legend_title_text='Populations',
-                        xaxis_title="",
-                        yaxis_title=""
-                    )
-
-                    # Update method explanations
-                    method_explanations = {
-                        "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data.",
-                        "LSQ": "Least Squares/ICA finds independent components in genetic data, highlighting unique ancestral contributions."
-                    }
-
-                    st.caption(method_explanations[decomposition_method])
-                    st.plotly_chart(fig, use_container_width=True,
-                                    config={'displayModeBar': True})
-
-                else:
-                    st.warning(
-                        "Please add at least 3 populations before plotting.", icon="⚠️")
-
-            except Exception as e:
-                st.error(f"Error creating plot: {str(e)}")
-                st.info("Try a different method or check your data.")
