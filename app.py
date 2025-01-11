@@ -247,9 +247,29 @@ with col2:
 #             st.session_state.textbox_content = st.session_state.redo_history.pop()
 #         st.rerun()
 
+# Add this function near the top of the file, after the imports
+
+
+def parse_input_data(data_input, delimiter=None):
+    """Parse input data detecting the delimiter if not specified."""
+    if not delimiter:
+        # Auto-detect delimiter by checking first non-empty line
+        for line in data_input.splitlines():
+            if line.strip():
+                if '\t' in line:
+                    delimiter = '\t'
+                else:
+                    delimiter = ','
+                break
+
+    return delimiter
+
+
 # Display the Textbox with the entire selected options
-data_input = st.text_area('Enter data in CSV format:',
-                          st.session_state.textbox_content.strip(), height=300, key='textbox_input')
+data_input = st.text_area('Enter data in CSV or TSV format:',
+                          st.session_state.textbox_content.strip(),
+                          height=300,
+                          key='textbox_input')
 
 # Check if the Textbox content has changed manually and clear session state if it has
 if data_input != st.session_state.textbox_content.strip():
@@ -289,11 +309,15 @@ if plot_tree:
                 cleaned_data_input = "\n".join(
                     line.strip() for line in data_input.splitlines() if line.strip())
 
-                # Read the data and select all columns except the first one (which contains population labels)
-                data = pd.read_csv(io.StringIO(
-                    cleaned_data_input), header=None).iloc[:, 1:]
-                populations = pd.read_csv(io.StringIO(
-                    cleaned_data_input), header=None, usecols=[0])[0]
+                # Detect delimiter and read data
+                delimiter = parse_input_data(cleaned_data_input)
+                data = pd.read_csv(io.StringIO(cleaned_data_input),
+                                   header=None,
+                                   delimiter=delimiter).iloc[:, 1:]
+                populations = pd.read_csv(io.StringIO(cleaned_data_input),
+                                          header=None,
+                                          delimiter=delimiter,
+                                          usecols=[0])[0]
 
                 # Check if data is not empty and there are at least 3 populations
                 if not data.empty and len(populations) >= 3:
@@ -363,10 +387,16 @@ if plot_scatter:
                 # Data preparation
                 cleaned_data_input = "\n".join(
                     line.strip() for line in data_input.splitlines() if line.strip())
-                data = pd.read_csv(io.StringIO(
-                    cleaned_data_input), header=None).iloc[:, 1:]
-                populations = pd.read_csv(io.StringIO(
-                    cleaned_data_input), header=None, usecols=[0])[0]
+
+                # Detect delimiter and read data
+                delimiter = parse_input_data(cleaned_data_input)
+                data = pd.read_csv(io.StringIO(cleaned_data_input),
+                                   header=None,
+                                   delimiter=delimiter).iloc[:, 1:]
+                populations = pd.read_csv(io.StringIO(cleaned_data_input),
+                                          header=None,
+                                          delimiter=delimiter,
+                                          usecols=[0])[0]
 
                 # Check population count
                 if not data.empty and len(populations) >= 3:
