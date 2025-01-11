@@ -310,6 +310,17 @@ if plot_type == "Scatter Plot":
     )
 
     st.session_state.decomposition_method = method
+    
+    # Simplified t-SNE parameters - only perplexity
+    if method == "t-SNE":
+        perplexity = st.number_input(
+            "Perplexity",
+            min_value=5.0,
+            max_value=50.0,
+            value=30.0,
+            step=1.0,
+            help="Balance between local and global aspects of data. Usually between 5 and 50"
+        )
 
 # Update the plotting buttons
 if plot_type == "Tree Plot":
@@ -340,8 +351,10 @@ if plot_button and plot_type == "Scatter Plot":
                         model = PCA(n_components=2)
                     elif method == "t-SNE":
                         model = TSNE(
+                            metric='euclidean',
                             n_components=2,
-                            perplexity=min(30, len(populations)-1),
+                            learning_rate='auto',
+                            perplexity=min(perplexity, len(populations)-1),
                             method='exact'  # For better accuracy with small datasets
                         )
                     else:  # MDS
