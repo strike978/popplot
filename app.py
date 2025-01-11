@@ -5,12 +5,9 @@ import pandas as pd
 import io
 import plotly.figure_factory as ff
 import plotly.express as px
-from sklearn.decomposition import PCA, FastICA
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import numpy as np
-import torch
-import torch.nn as nn
-from sklearn.preprocessing import StandardScaler
 
 # Keep only these session state initializations
 if 'textbox_content' not in st.session_state:
