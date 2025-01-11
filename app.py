@@ -6,7 +6,7 @@ import io
 import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+from sklearn.manifold import TSNE, MDS
 import numpy as np
 
 # Keep only these session state initializations
@@ -303,14 +303,12 @@ if plot_type == "Scatter Plot":
         [
             "PCA",
             "t-SNE",
-            "MDS",
-            "Gaussian Random Projection"
+            "MDS"
         ],
         help="""
         PCA: Principal Component Analysis - Standard linear dimensionality reduction
         t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters
         MDS: Multidimensional Scaling - Preserves distances between points
-        Gaussian Random Projection: Random projection using Gaussian random matrix
         """
     )
 
@@ -342,24 +340,14 @@ if plot_button and plot_type == "Scatter Plot":
                 if not data.empty and len(populations) >= 3:
                     # Update model initialization based on selected method
                     if method == "PCA":
-                        model = PCA(n_components=2, random_state=42)
+                        model = PCA(n_components=2)
                     elif method == "t-SNE":
                         model = TSNE(
                             n_components=2,
-                            method='exact',
-                            random_state=42,
-                            perplexity=min(30, len(populations)-1),
-                            n_jobs=-1
+                            perplexity=min(30, len(populations)-1)
                         )
-                    elif method == "MDS":
-                        from sklearn.manifold import MDS
-                        model = MDS(n_components=2, random_state=42)
-                    else:  # Gaussian Random Projection
-                        from sklearn.random_projection import GaussianRandomProjection
-                        model = GaussianRandomProjection(
-                            n_components=2,
-                            random_state=42
-                        )
+                    else:  # MDS
+                        model = MDS(n_components=2)
 
                     # Perform dimensionality reduction
                     result = model.fit_transform(data.values)
@@ -397,8 +385,7 @@ if plot_button and plot_type == "Scatter Plot":
                     method_explanations = {
                         "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
                         "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data.",
-                        "MDS": "Multidimensional Scaling preserves the pairwise distances between populations.",
-                        "Gaussian Random Projection": "Projects data using a random Gaussian matrix for efficient dimensionality reduction."
+                        "MDS": "Multidimensional Scaling preserves the pairwise distances between populations."
                     }
 
                     st.caption(method_explanations[method])
