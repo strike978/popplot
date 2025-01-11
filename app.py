@@ -344,6 +344,7 @@ if plot_button and plot_type == "Scatter Plot":
                     elif method == "t-SNE":
                         model = TSNE(
                             n_components=2,
+                            method='exact',
                             perplexity=min(30, len(populations)-1)
                         )
                     else:  # MDS
