@@ -351,9 +351,6 @@ if plot_button and plot_type == "Scatter Plot":
                         model = PCA(n_components=2)
                     elif method == "t-SNE":
                         model = TSNE(
-                            metric='euclidean',
-                            n_components=2,
-                            learning_rate='auto',
                             perplexity=min(perplexity, len(populations)-1),
                             method='exact'  # For better accuracy with small datasets
                         )
