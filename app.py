@@ -353,10 +353,14 @@ if plot_tree:
 
 # Replace the tab2 content with PCA button condition
 if plot_scatter:
-    with st.spinner(f"Creating {decomposition_method} Plot..."):
-        if data_input:
+    # Check for data first, before creating spinner
+    if not data_input:
+        st.warning(
+            "Please add at least 3 populations before plotting.", icon="⚠️")
+    else:
+        with st.spinner(f"Creating {decomposition_method} Plot..."):
             try:
-                # Data preparation (same as before)
+                # Data preparation
                 cleaned_data_input = "\n".join(
                     line.strip() for line in data_input.splitlines() if line.strip())
                 data = pd.read_csv(io.StringIO(
@@ -364,6 +368,7 @@ if plot_scatter:
                 populations = pd.read_csv(io.StringIO(
                     cleaned_data_input), header=None, usecols=[0])[0]
 
+                # Check population count
                 if not data.empty and len(populations) >= 3:
                     # Update model initialization
                     if decomposition_method == "PCA":
@@ -419,9 +424,10 @@ if plot_scatter:
                     st.plotly_chart(fig, use_container_width=True,
                                     config={'displayModeBar': True})
 
+                else:
+                    st.warning(
+                        "Please add at least 3 populations before plotting.", icon="⚠️")
+
             except Exception as e:
                 st.error(f"Error creating plot: {str(e)}")
-                st.info("Try a different decomposition method or check your data.")
-        else:
-            st.warning(
-                "Please add at least 3 populations before plotting.", icon="⚠️")
+                st.info("Try a different method or check your data.")
