@@ -6,7 +6,7 @@ import io
 import plotly.figure_factory as ff
 import plotly.express as px
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE, MDS
+from sklearn.manifold import TSNE
 import numpy as np
 
 # Keep only these session state initializations
@@ -300,27 +300,15 @@ plot_type = st.radio(
 if plot_type == "Scatter Plot":
     method = st.radio(
         "Scatter Plot Method:",
-        ["PCA", "t-SNE", "MDS"],
+        ["PCA", "t-SNE"],
         horizontal=True,
         help="""
         PCA: Principal Component Analysis - Standard linear dimensionality reduction
         t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters
-        MDS: Multidimensional Scaling - Preserves distances between points
         """
     )
 
     st.session_state.decomposition_method = method
-    
-    # Simplified t-SNE parameters - only perplexity
-    if method == "t-SNE":
-        perplexity = st.number_input(
-            "Perplexity",
-            min_value=5.0,
-            max_value=50.0,
-            value=30.0,
-            step=1.0,
-            help="Balance between local and global aspects of data. Usually between 5 and 50"
-        )
 
 # Update the plotting buttons
 if plot_type == "Tree Plot":
@@ -349,13 +337,15 @@ if plot_button and plot_type == "Scatter Plot":
                     # Update model initialization based on selected method
                     if method == "PCA":
                         model = PCA(n_components=2)
-                    elif method == "t-SNE":
+                    else:  # t-SNE
+                        n_samples = len(populations)
+                        perplexity = 30.0 if n_samples > 30 else n_samples - 1
                         model = TSNE(
-                            perplexity=min(perplexity, len(populations)-1),
-                            method='exact'  # For better accuracy with small datasets
+                            n_components=2,
+                            perplexity=perplexity,
+                            method='exact',  # For better accuracy with small datasets
+                            learning_rate='auto'
                         )
-                    else:  # MDS
-                        model = MDS(n_components=2)
 
                     # Perform dimensionality reduction
                     result = model.fit_transform(data.values)
@@ -392,8 +382,7 @@ if plot_button and plot_type == "Scatter Plot":
                     # Update method explanations
                     method_explanations = {
                         "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data.",
-                        "MDS": "Multidimensional Scaling preserves the pairwise distances between populations."
+                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data."
                     }
 
                     st.caption(method_explanations[method])
