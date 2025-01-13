@@ -300,7 +300,7 @@ plot_type = st.radio(
 if plot_type == "Scatter Plot":
     method = st.radio(
         "Scatter Plot Method:",
-        ["PCA", "t-SNE"],
+        ["t-SNE", "PCA"],
         horizontal=True,
         help="""
         PCA: Principal Component Analysis - Standard linear dimensionality reduction
