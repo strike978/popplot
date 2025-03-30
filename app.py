@@ -1,5 +1,6 @@
 from scipy.cluster.hierarchy import linkage
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, cdist
+from sklearn.preprocessing import normalize
 import streamlit as st
 import pandas as pd
 import io
@@ -18,6 +19,10 @@ if 'redo_history' not in st.session_state:
     st.session_state.redo_history = []
 if 'decomposition_method' not in st.session_state:
     st.session_state.decomposition_method = "PCA"
+if 'linkage_method' not in st.session_state:
+    st.session_state.linkage_method = "ward"
+if 'distance_metric' not in st.session_state:
+    st.session_state.distance_metric = "euclidean"
 
 # Keep only these constants:
 LINKAGE_METHOD = "ward"
@@ -265,7 +270,7 @@ def parse_input_data(data_input):
             else:
                 delimiter = ','
 
-            # Split the line and clean the fields
+            # Split the line and clean the fields - FIX THE BUG HERE
             fields = [field.strip() for field in line.split(delimiter)]
             parsed_lines.append(fields)
 
@@ -297,7 +302,21 @@ plot_type = st.radio(
     help="Choose between hierarchical clustering tree or dimensionality reduction scatter plot"
 )
 
-if plot_type == "Scatter Plot":
+# Add a conditional section for Tree Plot method selection
+if plot_type == "Tree Plot":
+    clustering_method = st.radio(
+        "Tree Plot Method:",
+        ["Ward", "Complete (correlation)"],
+        horizontal=True,
+        help="""
+        Ward: minimizes the variance of the clusters (always uses Euclidean distance by mathematical necessity).
+        Complete (correlation): uses maximum distances with correlation coefficient.
+        """
+    )
+    # Store selection in session state
+    st.session_state.clustering_method = clustering_method
+    plot_button = st.button("🌳 Plot")
+elif plot_type == "Scatter Plot":
     method = st.radio(
         "Scatter Plot Method:",
         ["t-SNE", "PCA"],
@@ -307,16 +326,10 @@ if plot_type == "Scatter Plot":
         t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters
         """
     )
-
     st.session_state.decomposition_method = method
-
-# Update the plotting buttons
-if plot_type == "Tree Plot":
-    plot_button = st.button("🌳 Plot")
-else:
     plot_button = st.button("📈 Plot")
 
-# Simplify the model initialization section to only include these 5 methods
+# Update the plotting buttons
 if plot_button and plot_type == "Scatter Plot":
     # Check for data first, before creating spinner
     if not data_input:
@@ -397,7 +410,7 @@ if plot_button and plot_type == "Scatter Plot":
                 st.error(f"Error creating plot: {str(e)}")
                 st.info("Try a different method or check your data.")
 
-# Add back the tree plotting code
+# Modify the tree plotting code - simplify method selection
 if plot_button and plot_type == "Tree Plot":
     with st.spinner("Creating Tree..."):
         if data_input:
@@ -416,14 +429,24 @@ if plot_button and plot_type == "Tree Plot":
 
                     # Convert data to float type to ensure numerical operations work
                     data_array = data.values
+                    
+                    # Set linkage method and distance metric based on selected method
+                    selected_method = st.session_state.clustering_method
+                    
+                    if selected_method == "Ward":
+                        linkage_method = "ward"
+                        distance_metric = "euclidean"
+                        distances = pdist(data_array, metric=distance_metric)
+                    else:  # Complete (correlation)
+                        linkage_method = "complete"
+                        distance_metric = "correlation"
+                        distances = pdist(data_array, metric=distance_metric)
 
-                    # Calculate distances using euclidean metric (required for Ward's method)
-                    distances = pdist(data_array, metric=DISTANCE_METRIC)
-
-                    # Create linkage matrix using Ward's method
+                    # Create linkage matrix using selected method
                     linkage_matrix = linkage(
                         distances,
-                        method=LINKAGE_METHOD
+                        method=linkage_method,
+                        metric=distance_metric if linkage_method == "ward" else None
                     )
 
                     # Create dendrogram
@@ -446,7 +469,7 @@ if plot_button and plot_type == "Tree Plot":
                     )
 
                     st.caption(
-                        "Using Ward's method with Euclidean distance for optimal clustering")
+                        f"Using {selected_method} method for optimal clustering")
                     st.caption(
                         'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
 
@@ -458,7 +481,7 @@ if plot_button and plot_type == "Tree Plot":
             except ValueError as e:
                 st.error(f"Error creating dendrogram: {str(e)}")
                 st.info(
-                    "Try a different combination of clustering method and distance metric.")
+                    "Try a different clustering method.")
             except Exception as e:
                 st.error(f"An unexpected error occurred: {str(e)}")
         else:
