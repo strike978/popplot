@@ -306,11 +306,19 @@ plot_type = st.radio(
 if plot_type == "Tree Plot":
     clustering_method = st.radio(
         "Tree Plot Method:",
-        ["Ward", "Complete (correlation)"],
+        ["Ward", 
+         "Complete (braycurtis)", 
+         "Complete (cityblock)", 
+         "Complete (correlation)", 
+         "Complete (euclidean)"],
         horizontal=True,
         help="""
-        Ward: minimizes the variance of the clusters (always uses Euclidean distance by mathematical necessity).
-        Complete (correlation): uses maximum distances with correlation coefficient.
+        Ward: Minimizes the variance of clusters (uses Euclidean distance).
+        Complete linkage methods use maximum distances between points in clusters with different metrics:
+        - braycurtis: Bray-Curtis distance (suitable for abundance data)
+        - cityblock: Manhattan/L1 distance (sum of absolute differences)
+        - correlation: Correlation coefficient distance (similarity in patterns)
+        - euclidean: Euclidean/L2 distance (straight-line distance)
         """
     )
     # Store selection in session state
@@ -433,48 +441,56 @@ if plot_button and plot_type == "Tree Plot":
                     # Set linkage method and distance metric based on selected method
                     selected_method = st.session_state.clustering_method
                     
+                    # Set the appropriate linkage method and distance metric
                     if selected_method == "Ward":
                         linkage_method = "ward"
-                        distance_metric = "euclidean"
-                        distances = pdist(data_array, metric=distance_metric)
-                    else:  # Complete (correlation)
+                        distance_metric = "euclidean"  # Ward requires euclidean
+                    else:
+                        # Extract the distance metric from the method name
                         linkage_method = "complete"
-                        distance_metric = "correlation"
+                        distance_metric = selected_method.split('(')[1].split(')')[0]
+                        
+                    try:
                         distances = pdist(data_array, metric=distance_metric)
+                        
+                        # Create linkage matrix using selected method
+                        linkage_matrix = linkage(
+                            distances,
+                            method=linkage_method,
+                            metric=None  # Already calculated distances
+                        )
+                        
+                        # Create dendrogram
+                        fig = ff.create_dendrogram(
+                            data_array,
+                            orientation="right",
+                            labels=labels,
+                            distfun=lambda x: distances,
+                            linkagefun=lambda x: linkage_matrix
+                        )
+                        
+                        # Update the layout and add captions
+                        fig.update_layout(
+                            height=height,
+                            yaxis={'side': 'right'}
+                        )
+                        fig.update_yaxes(
+                            automargin=True,
+                            range=[0, len(populations)*10]
+                        )
 
-                    # Create linkage matrix using selected method
-                    linkage_matrix = linkage(
-                        distances,
-                        method=linkage_method,
-                        metric=distance_metric if linkage_method == "ward" else None
-                    )
+                        st.caption(
+                            f"Using {selected_method} method for hierarchical clustering")
+                        st.caption(
+                            'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
 
-                    # Create dendrogram
-                    fig = ff.create_dendrogram(
-                        data_array,
-                        orientation="right",
-                        labels=labels,
-                        distfun=lambda x: distances,
-                        linkagefun=lambda x: linkage_matrix
-                    )
-
-                    # Update the layout and add captions
-                    fig.update_layout(
-                        height=height,
-                        yaxis={'side': 'right'}
-                    )
-                    fig.update_yaxes(
-                        automargin=True,
-                        range=[0, len(populations)*10]
-                    )
-
-                    st.caption(
-                        f"Using {selected_method} method for optimal clustering")
-                    st.caption(
-                        'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
-
-                    st.plotly_chart(fig, theme=None, use_container_width=True, config={
-                        'displayModeBar': True})
+                        st.plotly_chart(fig, theme=None, use_container_width=True, config={
+                            'displayModeBar': True})
+                    
+                    except ValueError as e:
+                        st.error(f"Error with distance metric {distance_metric}: {str(e)}")
+                        st.info("Some distance metrics may not be suitable for your data. Try another method.")
+                        
                 else:
                     st.warning(
                         "Please add at least 3 populations before plotting.", icon="⚠️")
