@@ -308,36 +308,37 @@ if plot_type == "Tree Plot":
         "Tree Plot Method:",
         ["Ward", 
          "Complete (braycurtis)", 
-         "Complete (cityblock)", 
-         "Complete (correlation)", 
-         "Complete (euclidean)"],
+         "Complete (correlation)",
+         "Weighted (braycurtis)"],
         horizontal=True,
         help="""
-        Ward: Minimizes the variance of clusters (uses Euclidean distance).
-        Complete linkage methods use maximum distances between points in clusters with different metrics:
-        - braycurtis: Bray-Curtis distance (suitable for abundance data)
-        - cityblock: Manhattan/L1 distance (sum of absolute differences)
-        - correlation: Correlation coefficient distance (similarity in patterns)
-        - euclidean: Euclidean/L2 distance (straight-line distance)
+        Ward: Minimizes the variance of clusters (requires Euclidean distance).
+        Complete: Uses maximum distances between points in clusters (good for finding distinct groups).
+        Weighted: Uses weighted average distances (WPGMA), giving smaller clusters more weight.
+        
+        Distance metrics:
+        - braycurtis: Bray-Curtis distance (suitable for genetic abundance data, measures dissimilarity)
+        - correlation: Correlation coefficient distance (similarity in genetic patterns)
         """
     )
     # Store selection in session state
     st.session_state.clustering_method = clustering_method
     plot_button = st.button("🌳 Plot")
 elif plot_type == "Scatter Plot":
+    # Simplify scatter plot methods to just the two most effective ones
     method = st.radio(
         "Scatter Plot Method:",
         ["t-SNE", "PCA"],
         horizontal=True,
         help="""
-        PCA: Principal Component Analysis - Standard linear dimensionality reduction
-        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters
+        PCA: Principal Component Analysis - Standard linear dimensionality reduction.
+        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters.
         """
     )
     st.session_state.decomposition_method = method
     plot_button = st.button("📈 Plot")
 
-# Update the plotting buttons
+# Simplify the Scatter Plot code to just handle PCA and t-SNE
 if plot_button and plot_type == "Scatter Plot":
     # Check for data first, before creating spinner
     if not data_input:
@@ -360,7 +361,7 @@ if plot_button and plot_type == "Scatter Plot":
                         model = PCA(n_components=2)
                     else:  # t-SNE
                         n_samples = len(populations)
-                        perplexity = 30.0 if n_samples > 30 else n_samples - 1
+                        perplexity = 30.0 if n_samples > 30 else max(3.0, n_samples - 1)
                         model = TSNE(
                             n_components=2,
                             perplexity=perplexity,
@@ -406,7 +407,7 @@ if plot_button and plot_type == "Scatter Plot":
                         "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data."
                     }
 
-                    st.caption(method_explanations[method])
+                    st.caption(method_explanations.get(method, ""))
                     st.plotly_chart(fig, use_container_width=True,
                                     config={'displayModeBar': True})
 
@@ -446,10 +447,22 @@ if plot_button and plot_type == "Tree Plot":
                         linkage_method = "ward"
                         distance_metric = "euclidean"  # Ward requires euclidean
                     else:
-                        # Extract the distance metric from the method name
-                        linkage_method = "complete"
-                        distance_metric = selected_method.split('(')[1].split(')')[0]
-                        
+                        # Extract the linkage method and distance metric from the method name
+                        method_parts = selected_method.split('(')
+                        if len(method_parts) > 1:
+                            method_name = method_parts[0].strip().lower()
+                            distance_metric = method_parts[1].split(')')[0]
+                            
+                            if method_name == "complete":
+                                linkage_method = "complete"
+                            elif method_name == "weighted":
+                                linkage_method = "weighted"  # WPGMA method
+                            else:
+                                linkage_method = "complete"  # Default to complete if unknown
+                        else:
+                            linkage_method = "complete"
+                            distance_metric = "euclidean"
+                    
                     try:
                         distances = pdist(data_array, metric=distance_metric)
                         
@@ -481,8 +494,17 @@ if plot_button and plot_type == "Tree Plot":
 
                         st.caption(
                             f"Using {selected_method} method for hierarchical clustering")
-                        st.caption(
-                            'Close branches indicate recent common ancestors and highlight genetic mixing from migrations or conquests.')
+                        
+                        # Add specific explanations based on method
+                        if "Weighted" in selected_method:
+                            st.caption('Weighted Bray-Curtis clustering is effective for genetic composition data with different sample sizes.')
+                        elif "Complete" in selected_method:
+                            if "correlation" in selected_method:
+                                st.caption('Complete correlation clustering shows pattern differences between genetic profiles, highlighting distinct population groups.')
+                            elif "braycurtis" in selected_method:
+                                st.caption('Complete Bray-Curtis clustering highlights populations with distinct genetic compositions.')
+                        else:  # Ward
+                            st.caption('Ward clustering minimizes variance within groups, typically producing compact, balanced clusters of related populations.')
 
                         st.plotly_chart(fig, theme=None, use_container_width=True, config={
                             'displayModeBar': True})
@@ -500,6 +522,8 @@ if plot_button and plot_type == "Tree Plot":
                     "Try a different clustering method.")
             except Exception as e:
                 st.error(f"An unexpected error occurred: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc())
         else:
             st.warning(
                 "Please add at least 3 populations before plotting.", icon="⚠️")
