@@ -302,25 +302,25 @@ plot_type = st.radio(
     help="Choose between hierarchical clustering tree or dimensionality reduction scatter plot"
 )
 
-# Add a conditional section for Tree Plot method selection
+# Update the Tree Plot method selection to include only Ward and Complete (correlation)
 if plot_type == "Tree Plot":
     clustering_method = st.radio(
         "Tree Plot Method:",
         ["Ward", 
-         "Complete (braycurtis)", 
-         "Complete (correlation)",
-         "Weighted (braycurtis)"],
+         "Complete (correlation)"],
         horizontal=True,
         help="""
-        Ward: Minimizes the variance of clusters (requires Euclidean distance).
-        Complete: Uses maximum distances between points in clusters (good for finding distinct groups).
-        Weighted: Uses weighted average distances (WPGMA), giving smaller clusters more weight.
+        Each method represents a different linkage criterion for hierarchical clustering:
         
-        Distance metrics:
-        - braycurtis: Bray-Curtis distance (suitable for genetic abundance data, measures dissimilarity)
-        - correlation: Correlation coefficient distance (similarity in genetic patterns)
+        Ward: Minimizes the variance of clusters (requires Euclidean distance).
+        Complete (correlation): Uses maximum distances between points with correlation distance (good for finding pattern differences).
+        
+        These methods offer complementary perspectives:
+        - Ward finds compact, balanced clusters based on absolute distances
+        - Complete (correlation) highlights pattern differences regardless of magnitude
         """
     )
+    
     # Store selection in session state
     st.session_state.clustering_method = clustering_method
     plot_button = st.button("🌳 Plot")
@@ -453,12 +453,12 @@ if plot_button and plot_type == "Tree Plot":
                             method_name = method_parts[0].strip().lower()
                             distance_metric = method_parts[1].split(')')[0]
                             
+                            # Map the method names to their scipy.cluster.hierarchy.linkage method parameter values
+                            # These are all the supported linkage methods in scipy
                             if method_name == "complete":
-                                linkage_method = "complete"
-                            elif method_name == "weighted":
-                                linkage_method = "weighted"  # WPGMA method
+                                linkage_method = "complete"     # Maximum distance between all observations in merged clusters
                             else:
-                                linkage_method = "complete"  # Default to complete if unknown
+                                linkage_method = "complete"     # Default to complete if unknown
                         else:
                             linkage_method = "complete"
                             distance_metric = "euclidean"
@@ -473,7 +473,7 @@ if plot_button and plot_type == "Tree Plot":
                             metric=None  # Already calculated distances
                         )
                         
-                        # Create dendrogram
+                        # Create dendrogram without advanced options
                         fig = ff.create_dendrogram(
                             data_array,
                             orientation="right",
@@ -491,39 +491,28 @@ if plot_button and plot_type == "Tree Plot":
                             automargin=True,
                             range=[0, len(populations)*10]
                         )
-
-                        st.caption(
-                            f"Using {selected_method} method for hierarchical clustering")
                         
-                        # Add specific explanations based on method
-                        if "Weighted" in selected_method:
-                            st.caption('Weighted Bray-Curtis clustering is effective for genetic composition data with different sample sizes.')
-                        elif "Complete" in selected_method:
-                            if "correlation" in selected_method:
-                                st.caption('Complete correlation clustering shows pattern differences between genetic profiles, highlighting distinct population groups.')
-                            elif "braycurtis" in selected_method:
-                                st.caption('Complete Bray-Curtis clustering highlights populations with distinct genetic compositions.')
+                        # Add standard method explanations
+                        st.caption(f"Using {selected_method} method for hierarchical clustering")
+                        
+                        # Update the method-specific explanations to include only Ward and Complete
+                        if "Complete" in selected_method:
+                            st.caption("Complete correlation clustering shows pattern differences between genetic profiles.")
                         else:  # Ward
-                            st.caption('Ward clustering minimizes variance within groups, typically producing compact, balanced clusters of related populations.')
-
+                            st.caption("Ward clustering minimizes variance within groups, typically producing compact, balanced clusters.")
+                        
+                        # Display the dendrogram without cluster identification
                         st.plotly_chart(fig, theme=None, use_container_width=True, config={
                             'displayModeBar': True})
                     
-                    except ValueError as e:
-                        st.error(f"Error with distance metric {distance_metric}: {str(e)}")
-                        st.info("Some distance metrics may not be suitable for your data. Try another method.")
-                        
+                    except Exception as e:
+                        st.error(f"Error creating tree plot: {str(e)}")
+                        st.info("Try a different method or check your data.")
                 else:
                     st.warning(
                         "Please add at least 3 populations before plotting.", icon="⚠️")
-            except ValueError as e:
-                st.error(f"Error creating dendrogram: {str(e)}")
-                st.info(
-                    "Try a different clustering method.")
             except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
-        else:
-            st.warning(
-                "Please add at least 3 populations before plotting.", icon="⚠️")
+                st.error(f"Error creating tree plot: {str(e)}")
+                st.info("Try a different method or check your data.")
+
+
