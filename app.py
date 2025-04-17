@@ -1,5 +1,5 @@
 from scipy.cluster.hierarchy import linkage
-from scipy.spatial.distance import pdist, cdist
+from scipy.spatial.distance import pdist, cdist, squareform  # Add missing import for squareform
 from sklearn.preprocessing import normalize
 import streamlit as st
 import pandas as pd
@@ -9,6 +9,12 @@ import plotly.express as px
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import numpy as np
+import io
+from PIL import Image
+import base64
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.manifold import MDS, Isomap
+import umap
 
 # Keep only these session state initializations
 if 'textbox_content' not in st.session_state:
@@ -282,6 +288,26 @@ def parse_input_data(data_input):
     return pd.Series(), pd.DataFrame()
 
 
+# Add a function to calculate the recommended number of neighbors based on population count
+def calculate_recommended_neighbors(population_count):
+    """
+    Calculate recommended number of neighbors for Isomap based on population count.
+    Rules:
+    - Minimum of 2 neighbors
+    - For small datasets (3-10 populations): use half the population count
+    - For medium datasets (11-30 populations): use one-third of the population count
+    - For large datasets (>30 populations): use one-fourth of the population count
+    - Maximum of 20 neighbors
+    """
+    if population_count <= 10:
+        recommended = max(2, population_count // 2)
+    elif population_count <= 30:
+        recommended = max(5, population_count // 3)
+    else:
+        recommended = max(8, min(20, population_count // 4))
+    
+    return recommended
+
 # Display the Textbox with the entire selected options
 data_input = st.text_area('Enter data in CSV or TSV format:',
                           st.session_state.textbox_content.strip(),
@@ -295,50 +321,81 @@ if data_input != st.session_state.textbox_content.strip():
 
 # Replace the decomposition method selector with this new organization
 
+# Update the plot type radio to set Scatter Plot as default first option
 plot_type = st.radio(
     "Plot Type:",
-    ["Tree Plot", "Scatter Plot"],
+    ["Scatter Plot", "Tree Plot"],  # Reordered to make Scatter Plot first/default
     horizontal=True,
-    help="Choose between hierarchical clustering tree or dimensionality reduction scatter plot"
+    help="Choose between dimensionality reduction scatter plot or hierarchical clustering tree"
 )
 
-# Update the Tree Plot method selection to include only Ward and Complete (correlation)
+# Handle plot type selection
 if plot_type == "Tree Plot":
     clustering_method = st.radio(
         "Tree Plot Method:",
         ["Ward", 
-         "Complete (correlation)"],
+         "Complete (cityblock)",
+         "Complete (braycurtis)"],  # Removed euclidean and minkowski
         horizontal=True,
         help="""
-        Each method represents a different linkage criterion for hierarchical clustering:
+        Each method offers a different perspective on population relationships:
         
-        Ward: Minimizes the variance of clusters (requires Euclidean distance).
-        Complete (correlation): Uses maximum distances between points with correlation distance (good for finding pattern differences).
-        
-        These methods offer complementary perspectives:
-        - Ward finds compact, balanced clusters based on absolute distances
-        - Complete (correlation) highlights pattern differences regardless of magnitude
+        Ward: Minimizes the variance of clusters (uses Euclidean distance).
+        Complete (cityblock): Uses sum of absolute differences, less sensitive to outliers than Euclidean.
+        Complete (braycurtis): Measures compositional dissimilarity, suitable for genetic abundance data.
         """
     )
     
     # Store selection in session state
     st.session_state.clustering_method = clustering_method
     plot_button = st.button("🌳 Plot")
+# Update Scatter Plot options to make Isomap the default/first option
 elif plot_type == "Scatter Plot":
-    # Simplify scatter plot methods to just the two most effective ones
-    method = st.radio(
-        "Scatter Plot Method:",
-        ["t-SNE", "PCA"],
-        horizontal=True,
-        help="""
-        PCA: Principal Component Analysis - Standard linear dimensionality reduction.
-        t-SNE: t-Distributed Stochastic Neighbor Embedding - Best for visualizing clusters.
-        """
-    )
+    col1, col2 = st.columns([1, 1])  # Adjust columns since we're removing the distance metric option
+    
+    with col1:
+        method = st.radio(
+            "Scatter Plot Method:",
+            ["Isomap", "t-SNE"],  # Reordered to make Isomap first/default
+            horizontal=True,
+            help="""
+            Isomap: Preserves geodesic distances, good for visualizing population structure.
+            t-SNE: Focuses on local clusters, can separate closely related populations.
+            """
+        )
+    
+    # Remove the distance metric selector since we're using braycurtis by default
+    
+    # Method-specific parameters
+    if method == "t-SNE":
+        perplexity = st.number_input(
+            "Perplexity",
+            min_value=3, 
+            max_value=100, 
+            value=30,
+            help="Balance between local and global aspects. Lower values focus on local structure."
+        )
+    elif method == "Isomap":
+        # Get current population count to make a recommendation
+        population_count = 0
+        if data_input:
+            lines = [line for line in data_input.strip().split('\n') if line.strip()]
+            population_count = len(lines)
+        
+        recommended_neighbors = calculate_recommended_neighbors(population_count)
+        
+        n_neighbors = st.number_input(
+            f"Neighbors (recommended: {recommended_neighbors})",
+            min_value=2, 
+            max_value=min(100, max(20, population_count)),
+            value=recommended_neighbors,
+            help="Number of neighbors to consider for each point. Higher values capture global structure, lower values preserve local relationships."
+        )
+    
     st.session_state.decomposition_method = method
     plot_button = st.button("📈 Plot")
 
-# Simplify the Scatter Plot code to just handle PCA and t-SNE
+# Simplify scatter plot code by removing the identify clusters checkbox
 if plot_button and plot_type == "Scatter Plot":
     # Check for data first, before creating spinner
     if not data_input:
@@ -356,40 +413,64 @@ if plot_button and plot_type == "Scatter Plot":
 
                 # Check population count
                 if not data.empty and len(populations) >= 3:
-                    # Update model initialization based on selected method
-                    if method == "PCA":
-                        model = PCA(n_components=2)
-                    else:  # t-SNE
+                    # Initialize model based on selected method and parameters
+                    reduction_data = data.values
+                    
+                    # Use braycurtis as the fixed distance metric for both methods
+                    distance_metric = "braycurtis"
+                        
+                    if method == "t-SNE":
                         n_samples = len(populations)
-                        perplexity = 30.0 if n_samples > 30 else max(3.0, n_samples - 1)
+                        # Adjust perplexity if sample count is small
+                        perplexity_val = min(perplexity, n_samples - 1) if n_samples < perplexity + 1 else perplexity
                         model = TSNE(
                             n_components=2,
-                            perplexity=perplexity,
+                            perplexity=perplexity_val,
+                            metric=distance_metric,  # Fixed to braycurtis
                             method='exact',  # For better accuracy with small datasets
                             learning_rate='auto'
                         )
+                    elif method == "Isomap":
+                        # Recalculate recommended neighbors based on actual number of populations
+                        actual_n_neighbors = min(n_neighbors, len(populations) - 1)
+                        
+                        # Create Isomap model with the neighbors parameter, but ensure it's valid
+                        model = Isomap(
+                            n_components=2,
+                            n_neighbors=actual_n_neighbors,  # Use actual value, limited by population count
+                            metric=distance_metric  # Fixed to braycurtis
+                        )
+                        
+                        # Update explanation to reflect the actual value used
+                        isomap_explanation = f"Isomap preserves geodesic distances using Bray-Curtis distance with {actual_n_neighbors} neighbors"
+                        if actual_n_neighbors != n_neighbors:
+                            isomap_explanation += f" (adjusted from {n_neighbors} based on population count)"
 
-                    # Perform dimensionality reduction
-                    result = model.fit_transform(data.values)
+                    # Perform dimensionality reduction with appropriate data
+                    try:
+                        result = model.fit_transform(reduction_data)
+                    except Exception as e:
+                        st.error(f"Error during dimensionality reduction: {str(e)}")
+                        st.info("Try a different method or metric.")
+                        st.stop()
 
-                    # Create DataFrame for plotting
+                    # Create plot DataFrame
                     plot_df = pd.DataFrame(
                         data=result,
-                        columns=[f'{method}1',
-                                 f'{method}2']
+                        columns=[f'Dim1', f'Dim2']
                     )
                     plot_df['Populations'] = populations
-
+                    
                     # Create scatter plot
                     fig = px.scatter(
                         plot_df,
-                        x=f'{method}1',
-                        y=f'{method}2',
+                        x='Dim1',
+                        y='Dim2',
                         color='Populations',
-                        title='',
+                        title=f'{method} Visualization (Bray-Curtis distance)',  # Fixed to show braycurtis
                         text='Populations'
                     )
-
+                    
                     # Customize plot
                     fig.update_traces(
                         textposition='top center',
@@ -400,17 +481,17 @@ if plot_button and plot_type == "Scatter Plot":
                         xaxis_title="",
                         yaxis_title=""
                     )
-
-                    # Update method explanations
-                    method_explanations = {
-                        "PCA": "Principal Component Analysis finds the directions of maximum variance in the data.",
-                        "t-SNE": "t-SNE visualizes genetic clusters by preserving local structure in the data."
-                    }
-
-                    st.caption(method_explanations.get(method, ""))
-                    st.plotly_chart(fig, use_container_width=True,
-                                    config={'displayModeBar': True})
-
+                    
+                    # Add method-specific explanations
+                    method_explanation = ""
+                    if method == "t-SNE":
+                        method_explanation = f"t-SNE visualizes clusters by preserving local structure using Bray-Curtis distance with perplexity {perplexity}."
+                    elif method == "Isomap":
+                        method_explanation = isomap_explanation
+                    
+                    st.caption(method_explanation)
+                    
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
                 else:
                     st.warning(
                         "Please add at least 3 populations before plotting.", icon="⚠️")
@@ -419,7 +500,7 @@ if plot_button and plot_type == "Scatter Plot":
                 st.error(f"Error creating plot: {str(e)}")
                 st.info("Try a different method or check your data.")
 
-# Modify the tree plotting code - simplify method selection
+# Update the tree plotting code to remove the even number requirement, keeping only the "more than 2" check
 if plot_button and plot_type == "Tree Plot":
     with st.spinner("Creating Tree..."):
         if data_input:
@@ -430,55 +511,43 @@ if plot_button and plot_type == "Tree Plot":
 
                 # Parse mixed format data
                 populations, data = parse_input_data(cleaned_data_input)
-
-                # Check if data is not empty and there are at least 3 populations
-                if not data.empty and len(populations) >= 3:
+                
+                # Check only that there are more than 2 populations (removing the even number check)
+                population_count = len(populations)
+                if not data.empty and population_count > 2:
+                    # Continue with tree plotting - no longer checking for even count
                     labels = [i for i in populations]
-                    height = max(20 * len(populations), 500)
-
+                    height = max(20 * population_count, 500)
+                    
                     # Convert data to float type to ensure numerical operations work
                     data_array = data.values
                     
-                    # Set linkage method and distance metric based on selected method
+                    # Set the appropriate linkage method and distance metric based on selected method
                     selected_method = st.session_state.clustering_method
+                    continue_standard_flow = True
                     
-                    # Set the appropriate linkage method and distance metric
-                    if selected_method == "Ward":
-                        linkage_method = "ward"
-                        distance_metric = "euclidean"  # Ward requires euclidean
-                    else:
-                        # Extract the linkage method and distance metric from the method name
-                        method_parts = selected_method.split('(')
-                        if len(method_parts) > 1:
-                            method_name = method_parts[0].strip().lower()
-                            distance_metric = method_parts[1].split(')')[0]
-                            
-                            # Map the method names to their scipy.cluster.hierarchy.linkage method parameter values
-                            # These are all the supported linkage methods in scipy
-                            if method_name == "complete":
-                                linkage_method = "complete"     # Maximum distance between all observations in merged clusters
-                            else:
-                                linkage_method = "complete"     # Default to complete if unknown
-                        else:
-                            linkage_method = "complete"
-                            distance_metric = "euclidean"
-                    
-                    try:
-                        distances = pdist(data_array, metric=distance_metric)
+                    # Fix the Ward + Complete implementation to use Complete linkage with Ward-like characteristics
+                    if selected_method == "Ward + Complete":
+                        # For this hybrid approach:
+                        # - Use Complete linkage (maximizes distances between clusters)
+                        # - But with squared Euclidean distances (like Ward's method does)
+                        # This combines Complete's ability to find distinct clusters with Ward's balanced approach
                         
-                        # Create linkage matrix using selected method
-                        linkage_matrix = linkage(
-                            distances,
-                            method=linkage_method,
-                            metric=None  # Already calculated distances
-                        )
+                        # Calculate Euclidean distances (which Ward's method uses)
+                        euclidean_distances = pdist(data_array, metric="euclidean")
                         
-                        # Create dendrogram without advanced options
+                        # Square the distances (this is what makes Ward's method minimize variance)
+                        squared_distances = euclidean_distances**2
+                        
+                        # Use Complete linkage with these squared Euclidean distances
+                        linkage_matrix = linkage(squared_distances, method="complete", metric=None)
+                        
+                        # Create the dendrogram using our hybrid approach
                         fig = ff.create_dendrogram(
                             data_array,
                             orientation="right",
                             labels=labels,
-                            distfun=lambda x: distances,
+                            distfun=lambda x: squared_distances,
                             linkagefun=lambda x: linkage_matrix
                         )
                         
@@ -492,27 +561,80 @@ if plot_button and plot_type == "Tree Plot":
                             range=[0, len(populations)*10]
                         )
                         
-                        # Add standard method explanations
+                        # Add method explanations for the hybrid approach
+                        st.caption("Using Ward + Complete hybrid method for hierarchical clustering")
+                        st.caption("This approach uses Complete linkage with squared Euclidean distances, combining Ward's variance minimization with Complete's distinct cluster separation.")
+                        
+                        # Display the dendrogram
+                        st.plotly_chart(fig, theme=None, use_container_width=True, config={
+                            'displayModeBar': True
+                        })
+                        
+                        continue_standard_flow = False
+                    
+                    if continue_standard_flow:
+                        # Further simplify methods to match the retained options
+                        if selected_method == "Ward":
+                            linkage_method = "ward"
+                            distance_metric = "euclidean"
+                        elif "cityblock" in selected_method:
+                            linkage_method = "complete"
+                            distance_metric = "cityblock"
+                        elif "braycurtis" in selected_method:
+                            linkage_method = "complete"
+                            distance_metric = "braycurtis"
+                        else:
+                            # Default fallback
+                            linkage_method = "ward"
+                            distance_metric = "euclidean"
+                        
+                        # Compute distances if not already computed (only needed for standard metrics)
+                        if 'distances' not in locals():
+                            distances = pdist(data_array, metric=distance_metric)
+                        
+                        # Create linkage matrix
+                        linkage_matrix = linkage(
+                            distances,
+                            method=linkage_method,
+                            metric=None  # Already calculated distances
+                        )
+                        
+                        # Create dendrogram
+                        fig = ff.create_dendrogram(
+                            data_array,
+                            orientation="right",
+                            labels=labels,
+                            distfun=lambda x: distances,
+                            linkagefun=lambda x: linkage_matrix
+                        )
+                        
+                        # Update layout
+                        fig.update_layout(
+                            height=height,
+                            yaxis={'side': 'right'}
+                        )
+                        fig.update_yaxes(
+                            automargin=True,
+                            range=[0, len(populations)*10]
+                        )
+                        
+                        # Add explanations
                         st.caption(f"Using {selected_method} method for hierarchical clustering")
                         
-                        # Update the method-specific explanations to include only Ward and Complete
-                        if "Complete" in selected_method:
-                            st.caption("Complete correlation clustering shows pattern differences between genetic profiles.")
+                        if "cityblock" in selected_method:
+                            st.caption("City-block distance sums the absolute differences across all genetic markers, less influenced by outliers.")
+                        elif "braycurtis" in selected_method:
+                            st.caption("Bray-Curtis distance measures compositional dissimilarity, identifying populations with similar genetic compositions.")
                         else:  # Ward
                             st.caption("Ward clustering minimizes variance within groups, typically producing compact, balanced clusters.")
                         
-                        # Display the dendrogram without cluster identification
+                        # Display the dendrogram
                         st.plotly_chart(fig, theme=None, use_container_width=True, config={
-                            'displayModeBar': True})
-                    
-                    except Exception as e:
-                        st.error(f"Error creating tree plot: {str(e)}")
-                        st.info("Try a different method or check your data.")
+                            'displayModeBar': True
+                        })
                 else:
                     st.warning(
                         "Please add at least 3 populations before plotting.", icon="⚠️")
             except Exception as e:
                 st.error(f"Error creating tree plot: {str(e)}")
                 st.info("Try a different method or check your data.")
-
-
