@@ -14,7 +14,7 @@ from PIL import Image
 import base64
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from sklearn.manifold import MDS, Isomap
-import umap
+
 
 # Keep only these session state initializations
 if 'textbox_content' not in st.session_state:
