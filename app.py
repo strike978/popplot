@@ -348,6 +348,17 @@ plot_type = st.radio(
 
 # Handle plot type selection
 if plot_type == "Tree Plot":
+    # Add menu for standardization options
+    standardize_option = st.selectbox(
+        "Standardization:",
+        [
+            "None",
+            "Standardize Rows",
+            "Standardize Columns",
+            "Standardize Both"
+        ],
+        help="Standardize data before clustering. Standardizing rows/columns subtracts mean and divides by std deviation."
+    )
     plot_button = st.button("🌳 Plot Tree")  # Remove columns
 
 # Simplify Scatter Plot options to just t-SNE with Plotly
@@ -481,10 +492,32 @@ if plot_button and plot_type == "Tree Plot":
                     # Convert data to float type to ensure numerical operations work
                     data_array = data.values.astype(float)
                     
-                    # REMOVE STANDARDIZATION CODE
+                    # Standardization logic
                     standardization_caption = "Using raw data values (no standardization)"
+                    if standardize_option == "Standardize Rows":
+                        means = data_array.mean(axis=1, keepdims=True)
+                        stds = data_array.std(axis=1, keepdims=True)
+                        stds[stds == 0] = 1
+                        data_array = (data_array - means) / stds
+                        standardization_caption = "Standardized each row (population) to mean 0, std 1"
+                    elif standardize_option == "Standardize Columns":
+                        means = data_array.mean(axis=0, keepdims=True)
+                        stds = data_array.std(axis=0, keepdims=True)
+                        stds[stds == 0] = 1
+                        data_array = (data_array - means) / stds
+                        standardization_caption = "Standardized each column (feature) to mean 0, std 1"
+                    elif standardize_option == "Standardize Both":
+                        # Standardize columns first, then rows
+                        means = data_array.mean(axis=0, keepdims=True)
+                        stds = data_array.std(axis=0, keepdims=True)
+                        stds[stds == 0] = 1
+                        data_array = (data_array - means) / stds
+                        means = data_array.mean(axis=1, keepdims=True)
+                        stds = data_array.std(axis=1, keepdims=True)
+                        stds[stds == 0] = 1
+                        data_array = (data_array - means) / stds
+                        standardization_caption = "Standardized columns, then rows (mean 0, std 1)"
                     
-                    # Rest of the tree plotting code remains the same
                     linkage_method = "ward"
                     distance_metric = "euclidean"
                     
